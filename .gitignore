@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.nbi
+*.nbc
+
+# raw simulation output is large and fully reproducible from experiments/
+data/
+results/**/raw/
+
+# smoke-run (--quick) outputs
+results/*_quick.json
+docs/figures/*_quick.png
+docs/results_tables_quick.md

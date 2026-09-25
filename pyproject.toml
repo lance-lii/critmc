@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "critmc"
+version = "1.0.0"
+description = "Monte Carlo simulation, exact results and statistical analysis for critical phenomena in lattice spin models"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["monte carlo", "ising model", "critical phenomena", "finite-size scaling", "statistical physics"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "numba>=0.58",
+    "mpmath>=1.3",
+    "matplotlib>=3.7",
+]
+
+[project.urls]
+Repository = "https://github.com/lance-lii/critmc"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "gmpy2>=2.1"]
+
+[project.scripts]
+critmc = "critmc.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "slow: statistical tests that run longer Markov chains",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "NPY"]
+ignore = ["E741", "B905"]
+
+[tool.ruff.lint.per-file-ignores]
+# report-style f-strings in scripts
+"experiments/*" = ["E501"]
+"examples/*" = ["E501"]
