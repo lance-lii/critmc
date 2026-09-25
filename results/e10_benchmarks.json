@@ -1,0 +1,150 @@
+{
+  "meta": {
+    "experiment": "e10_benchmarks",
+    "critmc_version": "1.0.0",
+    "python": "3.12.10",
+    "numpy": "2.5.3",
+    "quick": false,
+    "seed": 20260924,
+    "wall_time_s": 7.6
+  },
+  "machine": {
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "python": "3.12.10"
+  },
+  "suite": [
+    {
+      "label": "Ising 2D",
+      "updates": "metropolis",
+      "n_sites": 4096,
+      "seconds": 0.010523600038141012,
+      "site_updates_per_s": 116766125.23722127
+    },
+    {
+      "label": "Ising 2D",
+      "updates": "metropolis-random",
+      "n_sites": 4096,
+      "seconds": 0.01639089989475906,
+      "site_updates_per_s": 74968428.08447053
+    },
+    {
+      "label": "Ising 2D",
+      "updates": "heatbath",
+      "n_sites": 4096,
+      "seconds": 0.007547099841758609,
+      "site_updates_per_s": 162817509.47575483
+    },
+    {
+      "label": "Ising 2D",
+      "updates": "wolff",
+      "n_sites": 4096,
+      "seconds": 0.03406889992766082,
+      "site_updates_per_s": 30564092.242807407
+    },
+    {
+      "label": "Ising 2D",
+      "updates": "sw",
+      "n_sites": 4096,
+      "seconds": 0.03940859995782375,
+      "site_updates_per_s": 31181011.284722067
+    },
+    {
+      "label": "Ising 3D",
+      "updates": "wolff",
+      "n_sites": 4096,
+      "seconds": 0.10637980001047254,
+      "site_updates_per_s": 15615323.5843315
+    },
+    {
+      "label": "Potts q=3 2D",
+      "updates": "metropolis",
+      "n_sites": 4096,
+      "seconds": 0.012753400020301342,
+      "site_updates_per_s": 96350776.89431445
+    },
+    {
+      "label": "Potts q=3 2D",
+      "updates": "wolff",
+      "n_sites": 4096,
+      "seconds": 0.03405130002647638,
+      "site_updates_per_s": 32415913.6109853
+    },
+    {
+      "label": "XY 2D",
+      "updates": "metropolis",
+      "n_sites": 4096,
+      "seconds": 0.056107599986717105,
+      "site_updates_per_s": 21900776.370596956
+    },
+    {
+      "label": "XY 2D",
+      "updates": "overrelax",
+      "n_sites": 4096,
+      "seconds": 0.026921499986201525,
+      "site_updates_per_s": 45643816.30406237
+    },
+    {
+      "label": "XY 2D",
+      "updates": "wolff",
+      "n_sites": 4096,
+      "seconds": 0.1463120998814702,
+      "site_updates_per_s": 19881458.89749751
+    },
+    {
+      "label": "Heisenberg 3D",
+      "updates": "heatbath",
+      "n_sites": 4096,
+      "seconds": 0.08673830004408956,
+      "site_updates_per_s": 14166752.165714502
+    },
+    {
+      "label": "Heisenberg 3D",
+      "updates": "wolff",
+      "n_sites": 4096,
+      "seconds": 0.12673470005393028,
+      "site_updates_per_s": 8325644.03869655
+    }
+  ],
+  "sizes": [
+    8,
+    16,
+    32,
+    64,
+    128,
+    256
+  ],
+  "scaling": {
+    "metropolis": [
+      118569810.70924059,
+      125748992.16502422,
+      121322745.07081497,
+      119675731.79330817,
+      117360796.32608068,
+      118832982.32113406
+    ],
+    "heatbath": [
+      174203128.78299603,
+      179937830.52437907,
+      177630612.36347997,
+      170873109.7852166,
+      166167018.79563832,
+      170565451.66079265
+    ],
+    "wolff": [
+      31559674.41637017,
+      31098552.035759237,
+      31564600.3671872,
+      31102049.283962823,
+      30226850.435039535,
+      29074098.532211028
+    ],
+    "sw": [
+      30401882.490403783,
+      31604613.633213434,
+      31375758.16145839,
+      31724724.62374685,
+      31496223.79020831,
+      31651731.59995603
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "experiment": "e11_snapshots",
+    "critmc_version": "1.0.0",
+    "python": "3.12.10",
+    "numpy": "2.5.3",
+    "quick": false,
+    "seed": 20260924,
+    "wall_time_s": 22.2
+  },
+  "xy_vortex_counts": {
+    "T = 0.75": {
+      "vortices": 1,
+      "antivortices": 1
+    },
+    "T = 1.10": {
+      "vortices": 95,
+      "antivortices": 95
+    }
+  },
+  "ising_L": 256,
+  "xy_L": 64
+}
