@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 
 import numpy as np
-from common import banner, data_dir, figure_path, load_results, parse_args, save_results
+from common import banner, figure_path, load_results, parse_args, run_dir, save_results
 
 from critmc import plotting as P
 from critmc.exact import onsager
@@ -71,9 +71,7 @@ def main():
     started = time.time()
     tasks, index = plan(args)
     banner(f"{NAME}: {len(tasks)} runs")
-    runs = run_tasks(
-        tasks, workers=args.workers, out_dir=data_dir(NAME + ("_q" if args.quick else ""))
-    )
+    runs = run_tasks(tasks, workers=args.workers, out_dir=run_dir(NAME, args))
 
     table: dict = {
         a: {"L": [], "tau_e": [], "dtau_e": [], "tau_m2": [], "dtau_m2": [], "sweeps_per_meas": []}
