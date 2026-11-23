@@ -78,3 +78,37 @@ def test_multicanonical_potts_double_peak():
     assert dp["p_ordered"] == pytest.approx(dp["p_disordered"], rel=1e-6)
     assert dp["e_ordered"] < -1.5 < -1.1 < dp["e_disordered"]
     assert abs(b - bc) < 0.05
+
+
+def _wl_result_with_a_missed_level(L=6, level=12):
+    """A converged Wang-Landau result doctored to look as if one level was never reached."""
+    res = WangLandau(Ising(square(L)), seed=3).run(1e-5)
+    assert res.visited[level]
+    res.ln_g[level] = 0.0  # the value Wang-Landau starts every level from
+    res.visited[level] = False
+    return res, level
+
+
+def test_multicanonical_raw_ln_g_traps_the_walk_on_an_unvisited_level():
+    # documents the hazard that passing the WLResult avoids
+    res, level = _wl_result_with_a_missed_level()
+    out = Multicanonical(Ising(square(6)), res.ln_g, seed=4).run(5000)
+    assert out.hist[level] > 0.99 * out.hist.sum()
+
+
+def test_multicanonical_forbids_levels_wang_landau_never_visited():
+    res, level = _wl_result_with_a_missed_level()
+    out = Multicanonical(Ising(square(6)), res, seed=4).run(50_000)
+    assert out.hist[level] == 0
+    sampled = out.hist > 0
+    assert np.array_equal(sampled, res.visited)
+    # every other level is sampled about equally often
+    assert out.hist[sampled].min() > 0.3 * out.hist[sampled].mean()
+
+
+def test_multicanonical_wl_result_matches_its_array_when_all_levels_were_visited():
+    model = Potts(square(6), 10)
+    res = WangLandau(model, e_window=(-1.95, -0.6), seed=9).run(1e-4)
+    a = Multicanonical(model, res.ln_g, e_window=(-1.95, -0.6), seed=10).run(5000)
+    b = Multicanonical(model, res, e_window=(-1.95, -0.6), seed=10).run(5000)
+    np.testing.assert_array_equal(a.level_series, b.level_series)
