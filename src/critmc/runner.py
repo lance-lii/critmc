@@ -5,7 +5,10 @@ random stream is derived from ``(seed, *keys)``, so every task is reproducible
 on its own, independently of scheduling or of the number of workers.  When an
 output directory is given each result is written to ``<dir>/<name>.npz`` as
 soon as it finishes, and tasks whose file already exists are skipped, which
-makes long campaigns restartable after interruption.
+makes long campaigns restartable after interruption.  Every file records the
+task that produced it; a file left by a different task (another seed, coupling
+or run length under the same name) raises :class:`StaleCacheError` instead of
+being returned as the result.
 """
 
 from __future__ import annotations
@@ -19,11 +22,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .io import to_jsonable
 from .models import build_model
 from .rng import make_rng
 from .sim import Simulation, TimeSeries
 
-__all__ = ["Task", "run_task", "run_tasks", "parallel_map", "default_workers"]
+__all__ = ["Task", "StaleCacheError", "run_task", "run_tasks", "parallel_map", "default_workers"]
 
 
 @dataclass(frozen=True)
@@ -50,6 +54,37 @@ class Task:
             return f"{self.name}.npz"
         tag = "_".join(str(k) for k in self.keys) or "run"
         return f"{self.model['model']}_L{self.model['L']}_b{self.beta:.8f}_{tag}.npz"
+
+
+class StaleCacheError(ValueError):
+    """A cached result file was produced by a different task than the one requested."""
+
+
+def _task_record(task: Task) -> dict[str, Any]:
+    """The task as it reads back from the JSON metadata of a result file."""
+    return to_jsonable(asdict(task))
+
+
+def _load_cached(task: Task, path: Path) -> TimeSeries:
+    """Load a cached result after checking that ``task`` is what produced it."""
+    ts = TimeSeries.load(path)
+    wanted = _task_record(task)
+    found = ts.meta.get("task")
+    if found == wanted:
+        return ts
+    if not isinstance(found, dict):
+        detail = "it does not record the task that produced it"
+    else:
+        diff = [
+            f"{k}: file has {found.get(k)!r}, requested {wanted[k]!r}"
+            for k in wanted
+            if found.get(k) != wanted[k]
+        ]
+        detail = "; ".join(diff)
+    raise StaleCacheError(
+        f"{path} was not produced by the requested task ({detail}). "
+        "Use a different out_dir or delete the file."
+    )
 
 
 def run_task(task: Task) -> TimeSeries:
@@ -126,6 +161,8 @@ def run_tasks(
     """Run tasks in parallel and return their time series in task order.
 
     With ``out_dir`` results are cached on disk and existing files are reused.
+    A file is reused only if it was produced by the same task; otherwise
+    :class:`StaleCacheError` is raised before anything is run.
     """
     workers = default_workers() if workers is None else max(1, int(workers))
     out = str(out_dir) if out_dir is not None else None
@@ -138,7 +175,7 @@ def run_tasks(
     for i, t in enumerate(tasks):
         path = Path(out) / t.filename if out is not None else None
         if path is not None and path.exists():
-            results[i] = TimeSeries.load(path)
+            results[i] = _load_cached(t, path)
         else:
             pending.append(i)
 
