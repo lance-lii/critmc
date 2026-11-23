@@ -120,7 +120,10 @@ python experiments/run_all.py
 
 The quick run takes minutes; the full campaign takes a few hours on 8 cores.
 Raw time series go to `$CRITMC_DATA` (default `data/`) and are reused when a
-run is interrupted. On Windows, if the project sits under a very long path,
+run is interrupted. Each file records the run that produced it, and a file
+left by a different run (another seed or run length) stops the campaign with
+an error instead of being reused; `--quick` runs and runs with another
+`--seed` write to directories of their own. On Windows, if the project sits under a very long path,
 point `CRITMC_DATA` and `NUMBA_CACHE_DIR` to short directories, because
 compiled-kernel caches and data files can otherwise exceed the 260-character
 path limit. Numerical results are written to `results/*.json`,
