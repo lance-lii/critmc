@@ -96,7 +96,7 @@ def run_size(job):
     t_wl = time.time() - t0
     n_meas = 20_000 if quick else (300_000 if L < 32 else 600_000)
     mu = Multicanonical(
-        model, wlr.ln_g, e_window=WINDOW, seed=np.random.SeedSequence(seed, spawn_key=(6, L, 1))
+        model, wlr, e_window=WINDOW, seed=np.random.SeedSequence(seed, spawn_key=(6, L, 1))
     )
     raw = mu.run(n_meas, sweeps_per_meas=1, n_therm=2000)
     # use the measured series for both the full estimate and the jackknife replicates
