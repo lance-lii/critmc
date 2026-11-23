@@ -171,6 +171,9 @@ results/             numerical results of the studies (JSON)
 ```bash
 python -m pytest
 ```
+```bash
+python -m ruff check .
+```
 
 The suite runs in about a minute. Statistical tests are seeded, so they are
 deterministic. Their tolerance (|z| < 4.5 with batch-means errors) means a
