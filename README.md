@@ -2,7 +2,7 @@
 
 **Monte Carlo simulation, exact solutions and statistical analysis of critical phenomena in lattice spin models.**
 
-`critmc` is a research-grade Python framework for studying phase transitions
+`critmc` is a Python framework for studying phase transitions
 with Markov-chain Monte Carlo. It combines numba-compiled samplers for the
 Ising, Potts, XY/Heisenberg and Edwards–Anderson spin-glass models with an
 exact-solution layer that checks them, a rigorous error-analysis toolkit and
