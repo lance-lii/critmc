@@ -453,18 +453,29 @@ class MucaResult:
 
 
 class Multicanonical:
-    """Multicanonical production run with weights ``1/g(E)`` from Wang-Landau."""
+    """Multicanonical production run with weights ``1/g(E)`` from Wang-Landau.
+
+    ``ln_g`` is a :class:`WLResult` or an array with one entry per energy level.
+    Levels whose entry is not finite are forbidden.  Given a :class:`WLResult`,
+    the levels its run never visited are forbidden as well: Wang-Landau leaves
+    their ``ln g`` at the starting value 0, which as a weight ``1/g`` would
+    exceed that of every visited level and hold the walk there.  A bare array
+    is taken as it stands, so mark such levels with ``-inf`` (as
+    :meth:`WLResult.normalized` does) before passing one.
+    """
 
     def __init__(
         self,
         model: Model,
-        ln_g: np.ndarray,
+        ln_g: np.ndarray | WLResult,
         *,
         e_window: tuple[float | None, float | None] | None = None,
         seed=None,
     ):
         self.model = model
         self.levels = EnergyLevels.of(model)
+        if isinstance(ln_g, WLResult):
+            ln_g = np.where(ln_g.visited, ln_g.ln_g, -np.inf)
         if len(ln_g) != self.levels.size:
             raise ValueError("ln_g does not match the model's energy levels")
         self.window = self.levels.window(*e_window) if e_window else (0, self.levels.size - 1)
