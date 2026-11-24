@@ -113,6 +113,34 @@ def test_leading_fisher_zeros_give_nu_equal_one():
     assert lz[-1].distance < 6e-3
 
 
+def test_leading_zeros_do_not_depend_on_the_sizes_asked_for():
+    """Any set of sizes gives the zeros of the full doubling ladder."""
+    ref = {z.L: z.u for z in zeros.leading_zeros([4, 8, 16, 32, 64])}
+    for sizes in ([64], [4, 64], [32, 8], [16, 16, 64]):
+        got = zeros.leading_zeros(sizes)
+        assert [z.L for z in got] == sorted(set(sizes))
+        for z in got:
+            assert z.u == pytest.approx(ref[z.L], abs=1e-13)
+    # a size off the doubling ladder, reached through 8, 16 or directly from 8, 12
+    assert zeros.leading_zeros([24])[0].u == pytest.approx(
+        zeros.leading_zeros([8, 12, 24])[-1].u, abs=1e-13
+    )
+
+
+def test_leading_zeros_ladder():
+    assert zeros._ladder([64]) == [8, 16, 32, 64]
+    assert zeros._ladder([4, 64]) == [4, 8, 16, 32, 64]
+    assert zeros._ladder([6, 8, 12, 16, 24]) == [6, 8, 12, 16, 24]
+    assert zeros._ladder([24, 100]) == [8, 16, 24, 48, 96, 100]
+
+
+def test_leading_zeros_reject_sizes_they_cannot_solve():
+    for sizes in ([5], [8, 9], [2], [0, 8]):
+        with pytest.raises(ValueError, match="even and at least 4"):
+            zeros.leading_zeros(sizes)
+    assert zeros.leading_zeros([]) == []
+
+
 def test_potts_exact_values():
     assert potts.beta_c(2) == pytest.approx(np.log(1 + np.sqrt(2)))
     assert potts.latent_heat(10) == pytest.approx(0.696049, abs=1e-6)
