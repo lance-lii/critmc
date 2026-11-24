@@ -5,6 +5,8 @@
   propagation to derived quantities and replica combination;
 * :mod:`.blocking` - Flyvbjerg-Petersen blocking and Jonsson's automated
   plateau detection;
+* :mod:`.calibration` - bias, error-bar size and coverage of repeated runs
+  compared with a known answer;
 * :mod:`.resample` - blocked jackknife (including independent data sets) and
   i.i.d., moving-block and stationary bootstrap with percentile, basic, normal
   and BCa intervals.
@@ -24,6 +26,7 @@ from .autocorr import (
     tau_int_sokal,
 )
 from .blocking import BlockingLevels, BlockingResult, blocking_error, blocking_levels
+from .calibration import Calibration, PullStatistics, calibration, pull_statistics
 from .resample import (
     BootstrapResult,
     JackknifeResult,
@@ -49,6 +52,11 @@ __all__ = [
     "BlockingResult",
     "blocking_levels",
     "blocking_error",
+    # calibration against a known answer
+    "Calibration",
+    "PullStatistics",
+    "calibration",
+    "pull_statistics",
     # resampling
     "JackknifeResult",
     "BootstrapResult",
