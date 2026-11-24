@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 
 import numpy as np
-from common import banner, data_dir, figure_path, parse_args, save_results
+from common import banner, figure_path, parse_args, run_dir, save_results
 from scipy import stats
 
 from critmc import plotting as P
@@ -69,9 +69,7 @@ def main():
     started = time.time()
     temps, ts_tasks = tasks(args)
     banner(f"{NAME}: {len(ts_tasks)} runs")
-    runs = run_tasks(
-        ts_tasks, workers=args.workers, out_dir=data_dir(NAME + ("_q" if args.quick else ""))
-    )
+    runs = run_tasks(ts_tasks, workers=args.workers, out_dir=run_dir(NAME, args))
 
     exact = kaufman.thermodynamics(1.0 / temps, L)
     table = {}

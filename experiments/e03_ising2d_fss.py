@@ -20,7 +20,7 @@ from __future__ import annotations
 import time
 
 import numpy as np
-from common import banner, data_dir, figure_path, parse_args, save_results
+from common import banner, figure_path, parse_args, run_dir, save_results
 from scipy import optimize
 
 from critmc import plotting as P
@@ -85,9 +85,7 @@ def main():
     started = time.time()
     sizes, tasks, layout = plan(args)
     banner(f"{NAME}: {len(tasks)} runs")
-    runs = run_tasks(
-        tasks, workers=args.workers, out_dir=data_dir(NAME + ("_q" if args.quick else ""))
-    )
+    runs = run_tasks(tasks, workers=args.workers, out_dir=run_dir(NAME, args))
     data = {L: SizeData.from_runs([runs[i] for i in layout[L]], n_blocks=32) for L in sizes}
     # beta intervals in which the reweighted ensembles are trustworthy
     window = {L: data[L].reliable_window() for L in sizes}
