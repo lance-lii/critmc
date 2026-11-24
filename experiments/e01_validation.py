@@ -32,13 +32,22 @@ LABELS = {
 }
 
 
+def temperatures() -> np.ndarray:
+    return np.sort(np.append(np.linspace(1.6, 3.4, 19), onsager.T_C))
+
+
+def run_length(algo: str, quick: bool) -> int:
+    """Measurements per run: sweeps (local updates) or sweep-equivalents (cluster updates)."""
+    if algo in ("sw", "wolff"):
+        return 5_000 if quick else 40_000
+    return 10_000 if quick else 100_000
+
+
 def tasks(args):
-    temps = np.sort(np.append(np.linspace(1.6, 3.4, 19), onsager.T_C))
-    local = 10_000 if args.quick else 100_000
-    cluster = 5_000 if args.quick else 40_000
+    temps = temperatures()
     out = []
     for algo in ALGORITHMS:
-        n_meas = cluster if algo in ("sw", "wolff") else local
+        n_meas = run_length(algo, args.quick)
         for i, T in enumerate(temps):
             out.append(
                 Task(

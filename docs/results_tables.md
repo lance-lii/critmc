@@ -228,3 +228,80 @@ _critmc 1.0.0, seed 20260924._
 | XY 2D | wolff | 4096 | 19.9 |
 | Heisenberg 3D | heatbath | 4096 | 14.2 |
 | Heisenberg 3D | wolff | 4096 | 8.3 |
+
+## E12 — many-seed calibration of samplers and error bars
+_critmc 1.0.0, seed 20260924._
+
+200 independent runs per algorithm and temperature, 20 temperatures, Γ-method window S = 1.5. Expected for an unbiased sampler with correct errors: χ² ≈ dof, ratio 1, mean pull 0, sd 1, 68.3% within 1σ.
+
+| algorithm | observable | bias χ² / dof | p | scatter / quoted error | mean pull | sd of pulls | within 1σ | beyond 3σ (expected) |
+|---|---|---|---|---|---|---|---|---|
+| Metropolis | energy | 12.9 / 20 | 0.88 | 0.994 ± 0.011 | -0.009 ± 0.016 | 0.994 ± 0.011 | 68.5% | 12 (11) |
+| Metropolis | specific heat | 14.0 / 20 | 0.83 | 1.013 ± 0.011 | +0.002 ± 0.016 | 1.014 ± 0.011 | 67.3% | 13 (11) |
+| Heat bath | energy | 22.7 / 20 | 0.30 | 1.015 ± 0.012 | -0.017 ± 0.016 | 1.017 ± 0.012 | 67.7% | 16 (11) |
+| Heat bath | specific heat | 15.5 / 20 | 0.75 | 1.034 ± 0.011 | -0.051 ± 0.016 | 1.041 ± 0.012 | 66.4% | 21 (11) |
+| Swendsen–Wang | energy | 27.6 / 20 | 0.12 | 1.005 ± 0.011 | +0.004 ± 0.016 | 1.007 ± 0.011 | 67.2% | 12 (11) |
+| Swendsen–Wang | specific heat | 20.0 / 20 | 0.46 | 0.997 ± 0.011 | -0.027 ± 0.016 | 0.997 ± 0.011 | 69.1% | 9 (11) |
+| Wolff | energy | 30.3 / 20 | 0.07 | 1.016 ± 0.011 | +0.010 ± 0.016 | 1.018 ± 0.011 | 66.6% | 11 (11) |
+| Wolff | specific heat | 16.8 / 20 | 0.66 | 1.004 ± 0.011 | +0.001 ± 0.016 | 1.004 ± 0.011 | 69.0% | 9 (11) |
+
+Width of the pulls against the window parameter S, all temperatures:
+
+| algorithm | observable | S = 1 | S = 1.5 | S = 2 | S = 3 | S = 4 | S = 6 | ± (each) |
+|---|---|---|---|---|---|---|---|---|
+| Metropolis | energy | 1.000 | 0.994 | 0.993 | 0.992 | 0.992 | 0.992 | 0.011 |
+| Metropolis | specific heat | 1.027 | 1.014 | 1.009 | 1.006 | 1.005 | 1.005 | 0.011 |
+| Heat bath | energy | 1.037 | 1.017 | 1.010 | 1.006 | 1.005 | 1.005 | 0.012 |
+| Heat bath | specific heat | 1.081 | 1.041 | 1.024 | 1.012 | 1.009 | 1.007 | 0.012 |
+| Swendsen–Wang | energy | 1.008 | 1.007 | 1.007 | 1.008 | 1.009 | 1.009 | 0.011 |
+| Swendsen–Wang | specific heat | 0.999 | 0.997 | 0.997 | 0.998 | 0.998 | 0.999 | 0.011 |
+| Wolff | energy | 1.019 | 1.018 | 1.019 | 1.019 | 1.020 | 1.020 | 0.011 |
+| Wolff | specific heat | 1.004 | 1.004 | 1.003 | 1.003 | 1.004 | 1.004 | 0.011 |
+
+Where the mean pull comes from. An estimate and its own error bar fluctuate together, which shifts the mean pull without any bias in the estimate:
+
+| algorithm | observable | mean pull | from an offset | from the error bar |
+|---|---|---|---|---|
+| Metropolis | energy | -0.009 ± 0.016 | -0.005 | -0.003 |
+| Metropolis | specific heat | +0.002 ± 0.016 | +0.021 | -0.019 |
+| Heat bath | energy | -0.017 ± 0.016 | -0.010 | -0.007 |
+| Heat bath | specific heat | -0.051 ± 0.016 | -0.017 | -0.036 |
+| Swendsen–Wang | energy | +0.004 ± 0.016 | +0.005 | -0.001 |
+| Swendsen–Wang | specific heat | -0.027 ± 0.016 | -0.009 | -0.018 |
+| Wolff | energy | +0.010 ± 0.016 | +0.012 | -0.002 |
+| Wolff | specific heat | +0.001 ± 0.016 | +0.016 | -0.015 |
+
+Why the errors come out short. One chain of 40 run lengths per algorithm and temperature gives the integrated autocorrelation time summed out to 20 τ_int; cut into run-length pieces it gives the time the automatic window finds. The square root of their ratio predicts scatter / quoted error (S = 1.5, all temperatures; the last column compares the two temperature by temperature). τ_int and the decay time of the tail of the autocorrelation function are quoted at the slowest temperature:
+
+| algorithm | observable | slowest T | τ_int | tail decay time | tail / τ_int | predicted scatter / error | measured | χ² / dof by temperature |
+|---|---|---|---|---|---|---|---|---|
+| Metropolis | energy | 2.3 | 6.21 ± 0.07 | 10.8 | 1.7 | 1.003 ± 0.001 | 0.994 ± 0.011 | 35.0 / 20 |
+| Metropolis | specific heat | 2.2 | 3.76 ± 0.03 | 10.9 | 2.9 | 1.008 ± 0.001 | 1.013 ± 0.011 | 33.4 / 20 |
+| Heat bath | energy | 2.3 | 16.65 ± 0.30 | 33.1 | 2.0 | 1.011 ± 0.002 | 1.015 ± 0.012 | 24.9 / 20 |
+| Heat bath | specific heat | 2.2 | 9.49 ± 0.13 | 34.8 | 3.7 | 1.032 ± 0.004 | 1.034 ± 0.011 | 33.7 / 20 |
+| Swendsen–Wang | energy | 2.3 | 3.28 ± 0.04 | 3.4 | 1.0 | 0.999 ± 0.001 | 1.005 ± 0.011 | 18.9 / 20 |
+| Swendsen–Wang | specific heat | 2.2 | 1.80 ± 0.02 | 2.6 | 1.4 | 1.002 ± 0.001 | 0.997 ± 0.011 | 13.9 / 20 |
+| Wolff | energy | 2.3 | 1.52 ± 0.01 | 1.9 | 1.2 | 1.001 ± 0.001 | 1.016 ± 0.011 | 28.0 / 20 |
+| Wolff | specific heat | 2.1 | 1.24 ± 0.01 | 1.5 | 1.2 | 1.000 ± 0.001 | 1.004 ± 0.011 | 24.0 / 20 |
+
+The same prediction against the window parameter S, measured value in brackets:
+
+| algorithm | observable | S = 1 | S = 1.5 | S = 2 | S = 3 | S = 4 | S = 6 | ± (measured) |
+|---|---|---|---|---|---|---|---|---|
+| Metropolis | energy | 1.009 (1.001) | 1.003 (0.994) | 1.001 (0.993) | 1.000 (0.992) | 0.999 (0.992) | 0.999 (0.991) | 0.011 |
+| Metropolis | specific heat | 1.021 (1.027) | 1.008 (1.013) | 1.003 (1.008) | 1.000 (1.004) | 1.000 (1.003) | 1.000 (1.003) | 0.011 |
+| Heat bath | energy | 1.032 (1.036) | 1.011 (1.015) | 1.004 (1.008) | 1.000 (1.003) | 0.999 (1.002) | 0.997 (1.001) | 0.012 |
+| Heat bath | specific heat | 1.074 (1.075) | 1.032 (1.034) | 1.015 (1.016) | 1.003 (1.004) | 0.999 (1.000) | 0.997 (0.999) | 0.011 |
+| Swendsen–Wang | energy | 1.000 (1.006) | 0.999 (1.005) | 0.999 (1.005) | 0.999 (1.005) | 0.999 (1.005) | 0.999 (1.005) | 0.011 |
+| Swendsen–Wang | specific heat | 1.004 (0.998) | 1.002 (0.997) | 1.001 (0.996) | 1.001 (0.996) | 1.000 (0.996) | 1.000 (0.996) | 0.011 |
+| Wolff | energy | 1.001 (1.016) | 1.001 (1.016) | 1.001 (1.016) | 1.000 (1.016) | 1.000 (1.016) | 0.999 (1.015) | 0.011 |
+| Wolff | specific heat | 1.001 (1.005) | 1.000 (1.004) | 1.000 (1.003) | 1.000 (1.003) | 1.000 (1.003) | 1.000 (1.003) | 0.011 |
+
+One seed gives 40 pulls per algorithm (the E01 row). Across the 200 seeds:
+
+| algorithm | sd of the row's mean pull (if independent) | rows with KS p < 0.05 | E01 mean pull | seeds at least as far | E01 KS p | seeds as small |
+|---|---|---|---|---|---|---|
+| Metropolis | 0.175 (0.158) | 5.5% | +0.34 | 7.0% | 0.03 | 3.0% |
+| Heat bath | 0.178 (0.158) | 5.5% | +0.06 | 72.5% | 0.17 | 21.0% |
+| Swendsen–Wang | 0.173 (0.158) | 9.0% | +0.11 | 50.5% | 0.65 | 70.0% |
+| Wolff | 0.174 (0.158) | 6.0% | -0.02 | 92.0% | 0.58 | 67.0% |
