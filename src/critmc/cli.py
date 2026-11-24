@@ -7,13 +7,19 @@ Commands
 ``exact``     exact results: finite-torus thermodynamics, density of states, Fisher zeros
 ``bench``     kernel throughput
 ``info``      versions and available models
+
+A bad argument is a usage error (exit status 2) and a file that cannot be
+read or written is a one-line error (exit status 1).  Anything else that goes
+wrong is a bug and keeps its traceback.
 """
 
 from __future__ import annotations
 
 import argparse
 import math
+import os
 import sys
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -27,18 +33,55 @@ MODEL_OPTIONS = {"field": "ising", "q": "potts", "n": "on"}
 """Options of ``simulate`` that only one model reads, and that model."""
 
 
-def _positive(text: str) -> float:
-    value = float(text)
-    if not (math.isfinite(value) and value > 0):
-        raise argparse.ArgumentTypeError(f"must be a positive number, got {text}")
-    return value
+SERIES_KEYS = ("model", "lattice", "L", "N", "beta", "updates")
+"""Metadata every time series saved by ``simulate --out`` carries."""
 
 
-def _non_negative(text: str) -> float:
-    value = float(text)
-    if not (math.isfinite(value) and value >= 0):
-        raise argparse.ArgumentTypeError(f"must be a non-negative number, got {text}")
-    return value
+class CliError(Exception):
+    """A failure that is reported in one line, without a traceback."""
+
+
+def _real(wanted: str, accept=lambda value: True):
+    """An argparse type: a finite number that ``accept`` lets through."""
+
+    def convert(text: str) -> float:
+        try:
+            value = float(text)
+        except ValueError:
+            value = math.nan
+        if not (math.isfinite(value) and accept(value)):
+            raise argparse.ArgumentTypeError(f"must be {wanted}, got {text}")
+        return value
+
+    return convert
+
+
+_number = _real("a finite number")
+_positive = _real("a positive number", lambda value: value > 0)
+_non_negative = _real("a non-negative number", lambda value: value >= 0)
+
+
+def _integer(minimum: int, *, even: bool = False, or_zero: str = ""):
+    """An argparse type: an integer of at least ``minimum``.
+
+    ``even`` also requires an even value, and ``or_zero`` names what the
+    value 0 stands for where 0 is allowed as well.
+    """
+    wanted = f"an even integer of at least {minimum}" if even else f"an integer >= {minimum}"
+    if or_zero:
+        wanted = f"0 ({or_zero}) or {wanted}"
+
+    def convert(text: str) -> int:
+        try:
+            value = int(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"must be {wanted}, got {text}") from None
+        allowed = value >= minimum and not (even and value % 2)
+        if not allowed and not (or_zero and value == 0):
+            raise argparse.ArgumentTypeError(f"must be {wanted}, got {text}")
+        return value
+
+    return convert
 
 
 def _check_model_options(args, parser: argparse.ArgumentParser) -> None:
@@ -102,11 +145,36 @@ def _summary(ts: TimeSeries, out=None) -> None:
         print(f"throughput: {meta['site_updates_per_s']:.3g} site updates/s", file=out)
 
 
+def _check_writable(path: Path) -> None:
+    """Find out that ``path`` cannot be written before the run, not after it."""
+    folder = path.parent
+    folder.mkdir(parents=True, exist_ok=True)
+    if path.is_dir() or not os.access(folder, os.W_OK):
+        raise CliError(f"cannot write {path}")
+
+
+def _load_series(path: Path) -> TimeSeries:
+    try:
+        ts = TimeSeries.load(path)
+    except (ValueError, EOFError, zipfile.BadZipFile):
+        raise CliError(f"{path} is not an .npz file") from None
+    missing = [key for key in SERIES_KEYS if key not in ts.meta]
+    if missing or "E" not in ts.raw:
+        raise CliError(f"{path} is not a time series saved by critmc")
+    return ts
+
+
 def cmd_simulate(args) -> int:
     _check_model_options(args, args.parser)
-    model = _model(args)
     beta = 1.0 / args.T if args.T is not None else args.beta
-    sim = Simulation(model, beta, args.updates, seed=args.seed, start=args.start)
+    try:
+        # Nothing has run yet, so whatever is refused here is a bad argument:
+        # an unknown update, one the model lacks, a cluster update in a field.
+        sim = Simulation(_model(args), beta, args.updates, seed=args.seed, start=args.start)
+    except ValueError as err:
+        args.parser.error(str(err))
+    if args.out:
+        _check_writable(args.out)
     sim.thermalize(args.therm)
     ts = sim.run(args.meas)
     _summary(ts)
@@ -117,7 +185,7 @@ def cmd_simulate(args) -> int:
 
 def cmd_analyze(args) -> int:
     for path in args.files:
-        _summary(TimeSeries.load(path))
+        _summary(_load_series(path))
     return 0
 
 
@@ -138,6 +206,8 @@ def cmd_exact(args) -> int:
                     f"{float(onsager.specific_heat(T)):16.12f} {onsager.free_energy(T):16.12f}"
                 )
     elif args.what == "dos":
+        if args.out:
+            _check_writable(args.out)
         d = dos.ising_dos(args.L)
         if args.out:
             d.save(args.out)
@@ -185,19 +255,19 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument(
         "--lattice", default="square", choices=["chain", "square", "cubic", "triangular"]
     )
-    s.add_argument("--L", type=int, default=32)
+    s.add_argument("--L", type=_integer(2), default=32, help="linear size, >= 2")
     s.add_argument("--q", type=int, help="Potts states (--model potts, default 3)")
     s.add_argument("--n", type=int, help="O(n) components (--model on, default 2)")
-    s.add_argument("--field", type=float, help="magnetic field (--model ising, default 0)")
+    s.add_argument("--field", type=_number, help="magnetic field (--model ising, default 0)")
     temp = s.add_mutually_exclusive_group()
     temp.add_argument("--T", type=_positive, help="temperature, positive")
     temp.add_argument(
         "--beta", type=_non_negative, default=0.4406867935, help="inverse temperature, >= 0"
     )
-    s.add_argument("--updates", default="wolff")
-    s.add_argument("--therm", type=int, default=2000)
-    s.add_argument("--meas", type=int, default=20000)
-    s.add_argument("--seed", type=int, default=1)
+    s.add_argument("--updates", default="wolff", help='e.g. "heatbath+4*overrelax+wolff"')
+    s.add_argument("--therm", type=_integer(0), default=2000, help="measurements to discard")
+    s.add_argument("--meas", type=_integer(2), default=20000, help="measurements to keep")
+    s.add_argument("--seed", type=_integer(0), default=1)
     s.add_argument("--start", default="random", choices=["random", "ordered"])
     s.add_argument("--out", type=Path)
     s.set_defaults(func=cmd_simulate, parser=s)
@@ -209,18 +279,23 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("exact", help="exact results for the square-lattice Ising model")
     esub = e.add_subparsers(dest="what", required=True)
     t = esub.add_parser("thermo", help="u, c, f of an L x L torus (or L -> infinity)")
-    t.add_argument("--L", type=int, default=0, help="linear size (0 = thermodynamic limit)")
+    t.add_argument(
+        "--L",
+        type=_integer(2, or_zero="thermodynamic limit"),
+        default=0,
+        help="linear size (0 = thermodynamic limit)",
+    )
     t.add_argument("--T", type=_positive, nargs="+", required=True)
     d = esub.add_parser("dos", help="exact integer density of states (even L)")
-    d.add_argument("--L", type=int, required=True)
+    d.add_argument("--L", type=_integer(2, even=True), required=True)
     d.add_argument("--out", type=Path)
     z = esub.add_parser("zeros", help="leading Fisher zeros for even sizes L >= 4")
-    z.add_argument("sizes", type=int, nargs="+")
+    z.add_argument("sizes", type=_integer(4, even=True), nargs="+")
     e.set_defaults(func=cmd_exact)
 
     b = sub.add_parser("bench", help="kernel throughput")
-    b.add_argument("--L", type=int, default=64)
-    b.add_argument("--meas", type=int, default=200)
+    b.add_argument("--L", type=_integer(2), default=64)
+    b.add_argument("--meas", type=_integer(1), default=200)
     b.set_defaults(func=cmd_bench)
 
     i = sub.add_parser("info", help="versions and capabilities")
@@ -230,7 +305,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return int(args.func(args) or 0)
+    try:
+        return int(args.func(args) or 0)
+    except (CliError, OSError) as err:
+        print(f"critmc: error: {err}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
