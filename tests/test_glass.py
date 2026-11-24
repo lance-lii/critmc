@@ -79,3 +79,35 @@ def test_feedback_temperatures_keep_endpoints():
     new = feedback_temperatures(temps, hist)
     assert new[0] == pytest.approx(0.5) and new[-1] == pytest.approx(2.0)
     assert np.all(np.diff(new) > 0)
+
+
+def _label_hist(f):
+    """Histogram of replica labels with fraction ``f`` coming from the hottest temperature."""
+    up = np.round(1e6 * np.asarray(f)).astype(np.int64)
+    return np.column_stack([up, 1_000_000 - up])
+
+
+def test_feedback_temperatures_leave_an_optimal_set_unchanged():
+    # f falling by the same amount across every interval is the optimum of
+    # Katzgraber et al., whatever the spacing of the temperatures
+    temps = geometric_temperatures(0.5, 2.0, 9)
+    new = feedback_temperatures(temps, _label_hist(np.linspace(0.0, 1.0, 9)))
+    np.testing.assert_allclose(new, temps, rtol=1e-12)
+
+
+def test_feedback_temperatures_move_towards_a_bottleneck():
+    # replicas diffuse freely except across the interval [1.0, 1.25], where f jumps
+    temps = np.linspace(0.5, 2.0, 7)
+    f = np.array([0.0, 0.05, 0.1, 0.9, 0.95, 1.0, 1.0])
+    new = feedback_temperatures(temps, _label_hist(f))
+    inside = lambda t: int(np.sum((t > 1.0) & (t < 1.25)))  # noqa: E731
+    assert inside(temps) == 0 and inside(new) >= 2
+    assert np.all(np.diff(new) > 0)
+
+
+def test_feedback_temperatures_accept_any_order():
+    temps = geometric_temperatures(0.5, 2.0, 9)
+    hist = _label_hist(np.linspace(0.0, 1.0, 9))
+    np.testing.assert_allclose(
+        feedback_temperatures(temps[::-1], hist[::-1]), feedback_temperatures(temps, hist)
+    )
