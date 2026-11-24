@@ -214,8 +214,12 @@ def feedback_temperatures(temperatures: np.ndarray, label_hist: np.ndarray) -> n
     H. G. Katzgraber, S. Trebst, D. A. Huse & M. Troyer, J. Stat. Mech. P03018
     (2006): with ``f(T)`` the fraction of replicas at ``T`` that last visited
     the hottest temperature, the optimal density of temperatures is
-    ``eta(T) ~ sqrt(df/dT / dT)``; new temperatures are placed at equal
-    quantiles of ``eta``.  End points are kept fixed.
+    ``eta(T) ~ sqrt(df/dT / dT)``, where ``dT`` is the current spacing; new
+    temperatures are placed at equal quantiles of ``eta``.  End points are
+    kept fixed.
+
+    A set in which ``f`` already falls by the same amount across every interval
+    is a fixed point of the iteration and is returned unchanged.
     """
     temps = np.asarray(temperatures, dtype=np.float64)
     order = np.argsort(temps)
@@ -228,9 +232,9 @@ def feedback_temperatures(temperatures: np.ndarray, label_hist: np.ndarray) -> n
     # enforce monotonicity (f rises from ~0 at T_min to ~1 at T_max)
     f = np.maximum.accumulate(f)
     df = np.maximum(np.diff(f), 1e-6)
-    dt = np.diff(t)
-    eta = np.sqrt(df / dt)
-    cum = np.concatenate([[0.0], np.cumsum(eta * dt)])
+    # eta = sqrt(df/dT / dT) is constant inside an interval, so its integral
+    # over the interval is eta * dT = sqrt(df)
+    cum = np.concatenate([[0.0], np.cumsum(np.sqrt(df))])
     cum /= cum[-1]
     targets = np.linspace(0.0, 1.0, len(t))
     new = np.interp(targets, cum, t)
