@@ -82,8 +82,25 @@ def test_exact_dos_rectangular_and_cache(tmp_path):
     lat = hypercubic((4, 6))
     jd = enumeration.ising_joint_dos(lat)
     assert d.log_z(0.3)[0] == pytest.approx(jd.log_z(0.3), abs=1e-12)
-    with pytest.raises(ValueError):
-        dos.ising_dos(5)
+    for shape in ((5,), (4, 3), (0,), (-2,), (4, 0)):
+        with pytest.raises(ValueError, match="even and at least 2"):
+            dos.ising_dos(*shape)
+
+
+@pytest.mark.parametrize("shape", [(2, 2), (2, 4), (4, 2), (2, 6), (6, 2), (2, 8)])
+def test_exact_dos_of_a_torus_two_sites_wide(shape):
+    """An extent of 2 doubles the bonds across it; the counts are still exact."""
+    L, M = shape
+    n = L * M
+    spins = (((np.arange(2**n)[:, None] >> np.arange(n)) & 1) * 2 - 1).reshape(-1, L, M)
+    energy = -(spins * np.roll(spins, 1, 1)).sum((1, 2)) - (spins * np.roll(spins, 1, 2)).sum(
+        (1, 2)
+    )
+    counted = np.bincount((energy + 2 * n) // 4, minlength=n + 1)
+    d = dos.ising_dos(L, M)
+    assert list(d.g) == counted.tolist()
+    assert d.g[2] == dos._first_excited(L, M)
+    assert d.log_z(0.3)[0] == pytest.approx(kaufman.log_partition(0.3, L, M), abs=1e-10)
 
 
 def test_polynomial_value_matches_real_kaufman():
@@ -111,6 +128,34 @@ def test_leading_fisher_zeros_give_nu_equal_one():
     # the leading zero approaches u_c = sqrt(2) - 1 from the upper half plane
     assert all(z.u.imag > 0 for z in lz)
     assert lz[-1].distance < 6e-3
+
+
+def test_leading_zeros_do_not_depend_on_the_sizes_asked_for():
+    """Any set of sizes gives the zeros of the full doubling ladder."""
+    ref = {z.L: z.u for z in zeros.leading_zeros([4, 8, 16, 32, 64])}
+    for sizes in ([64], [4, 64], [32, 8], [16, 16, 64]):
+        got = zeros.leading_zeros(sizes)
+        assert [z.L for z in got] == sorted(set(sizes))
+        for z in got:
+            assert z.u == pytest.approx(ref[z.L], abs=1e-13)
+    # a size off the doubling ladder, reached through 8, 16 or directly from 8, 12
+    assert zeros.leading_zeros([24])[0].u == pytest.approx(
+        zeros.leading_zeros([8, 12, 24])[-1].u, abs=1e-13
+    )
+
+
+def test_leading_zeros_ladder():
+    assert zeros._ladder([64]) == [8, 16, 32, 64]
+    assert zeros._ladder([4, 64]) == [4, 8, 16, 32, 64]
+    assert zeros._ladder([6, 8, 12, 16, 24]) == [6, 8, 12, 16, 24]
+    assert zeros._ladder([24, 100]) == [8, 16, 24, 48, 96, 100]
+
+
+def test_leading_zeros_reject_sizes_they_cannot_solve():
+    for sizes in ([5], [8, 9], [2], [0, 8]):
+        with pytest.raises(ValueError, match="even and at least 4"):
+            zeros.leading_zeros(sizes)
+    assert zeros.leading_zeros([]) == []
 
 
 def test_potts_exact_values():

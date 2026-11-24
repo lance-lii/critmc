@@ -91,25 +91,51 @@ def leading_zero(L: int, guess: complex, dps: int = 40, max_iter: int = 40) -> L
     return LeadingZero(int(L), complex(u))
 
 
-def leading_zeros(sizes, dps: int = 40) -> list[LeadingZero]:
-    """Leading zeros for increasing even ``L``.
+SEED_SIZE = 8
+"""Largest size whose complete zero set is used to start a ladder (about a second)."""
 
-    The smallest size is solved from its complete zero set.  Later guesses
-    extrapolate ``u_1(L) = u_c + a/L + b/L^2`` through the two previous zeros
-    (plain ``1/L`` scaling for the second size), which keeps every Newton
-    start well inside its basin of attraction.
+
+def _ladder(sizes: list[int]) -> list[int]:
+    """Sizes to solve, in order, so that every Newton start is a short extrapolation.
+
+    Finding all zeros costs far too much beyond ``L ~ 12``, and the
+    extrapolated guess leaves its basin when the size grows by a large factor
+    in one step.  The ladder therefore starts no higher than ``SEED_SIZE`` and
+    never more than doubles.
     """
-    sizes = sorted(int(L) for L in sizes)
-    if any(L % 2 for L in sizes):
-        raise ValueError("sizes must be even")
+    ladder = [min(sizes[0], SEED_SIZE)]
+    for L in sizes:
+        while 2 * ladder[-1] < L:
+            ladder.append(2 * ladder[-1])
+        if L != ladder[-1]:
+            ladder.append(L)
+    return ladder
+
+
+def leading_zeros(sizes, dps: int = 40) -> list[LeadingZero]:
+    """Leading zeros for even ``L >= 4``, returned in increasing order of ``L``.
+
+    The smallest size of the ladder is solved from its complete zero set.
+    Later guesses extrapolate ``u_1(L) = u_c + a/L + b/L^2`` through the two
+    previous zeros (plain ``1/L`` scaling for the second size), which keeps
+    every Newton start well inside its basin of attraction.  Sizes that are
+    needed only as stepping stones (see :func:`_ladder`) are solved but not
+    returned, so any set of sizes can be asked for.
+    """
+    sizes = sorted({int(L) for L in sizes})
+    if not sizes:
+        return []
+    if any(L % 2 or L < 4 for L in sizes):
+        raise ValueError("sizes must be even and at least 4")
     from .dos import ising_dos
 
-    first = sizes[0]
+    ladder = _ladder(sizes)
+    first = ladder[0]
     zs = fisher_zeros(ising_dos(first))
     upper = zs[(zs.imag > 1e-12) & (zs.real > 0)]
     start = upper[np.argmin(np.abs(upper - U_C))]
     out = [leading_zero(first, start, dps)]
-    for L in sizes[1:]:
+    for L in ladder[1:]:
         if len(out) == 1:
             guess = U_C + (out[0].u - U_C) * out[0].L / L
         else:
@@ -119,4 +145,5 @@ def leading_zeros(sizes, dps: int = 40) -> list[LeadingZero]:
             a, b = np.linalg.solve(mat, np.array([u1, u2]))
             guess = U_C + a / L + b / L**2
         out.append(leading_zero(L, guess, dps))
-    return out
+    wanted = set(sizes)
+    return [z for z in out if z.L in wanted]

@@ -14,6 +14,7 @@ Conventions (``J = k_B = 1`` throughout):
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -100,6 +101,8 @@ class Ising(Model):
     def __init__(self, lattice: Lattice, h: float = 0.0):
         super().__init__(lattice)
         self.h = float(h)
+        if not math.isfinite(self.h):
+            raise ValueError(f"field h must be finite, got {h}")
 
     def check_updates(self, names: list[str]) -> None:
         super().check_updates(names)
@@ -168,7 +171,7 @@ class Potts(Model):
     def __init__(self, lattice: Lattice, q: int):
         super().__init__(lattice)
         if q < 2 or q > 127:
-            raise ValueError("q must be in [2, 127]")
+            raise ValueError(f"q must be in [2, 127], got {q}")
         self.q = int(q)
 
     def initial_state(self, start, rng):
@@ -236,7 +239,7 @@ class ON(Model):
     def __init__(self, lattice: Lattice, n: int):
         super().__init__(lattice)
         if n < 2:
-            raise ValueError("use the Ising model for n = 1")
+            raise ValueError(f"n must be at least 2, got {n} (n = 1 is the Ising model)")
         if n > 3:
             # the heat-bath kernel is specialised to n = 2, 3; everything else is generic
             self.updates = tuple(u for u in self.updates if u != "heatbath")
