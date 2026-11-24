@@ -187,7 +187,60 @@ def e04(r) -> str:
         d = dict(zip(t["L"], zip(t["tau_e"], t["dtau_e"])))
         rows.append([names[algo]] + [fv(*d[L]) if L in d else "—" for L in sizes])
     s += table(["τ_int(E)"] + [f"L={L}" for L in sizes], rows)
+    slow = r.get("slow_mode")
+    if slow:
+        s += (
+            "\n**Why the energy's exponent is lower (local algorithms).** The slowest mode"
+            " relaxes in τ_exp; it carries the share A_E of the energy's fluctuations, and"
+            " A_E·c is roughly constant (c: exact specific heat of the L×L torus).\n\n"
+        )
+        rows = []
+        for algo, t in slow["algorithms"].items():
+            for i, L in enumerate(t["L"]):
+                rows.append(
+                    [
+                        names[algo],
+                        f"{L}",
+                        f"{t['c'][i]:.3f}",
+                        fv(t["tau_exp_m2"][i], t["dtau_exp_m2"][i]),
+                        fv(t["tau_exp_e"][i], t["dtau_exp_e"][i]),
+                        fv(t["share_m2"][i], t["dshare_m2"][i]),
+                        fv(t["share_e"][i], t["dshare_e"][i]),
+                        fv(t["share_e_times_c"][i], t["dshare_e_times_c"][i]),
+                    ]
+                )
+        s += table(
+            ["algorithm", "L", "c", "τ_exp from m²", "τ_exp from E", "A_m²", "A_E", "A_E·c"],
+            rows,
+        )
+        s += "\n"
+        rows = []
+        for algo, t in slow["algorithms"].items():
+            f = t["fits"]
+            rows.append(
+                [
+                    names[algo],
+                    fv(r["fits"][algo]["e"]["z"], r["fits"][algo]["e"]["dz"]),
+                    f"{t['z_expected_from_c']:.2f}",
+                    "—" if f["tau_e_times_c"] is None else pv(_z(f["tau_e_times_c"])),
+                    "—" if f["tau_exp_m2"] is None else pv(_z(f["tau_exp_m2"])),
+                ]
+            )
+        s += table(
+            [
+                "algorithm",
+                "z from τ_int(E)",
+                "expected for L^z/c",
+                "z from τ_int(E)·c",
+                "z from τ_exp",
+            ],
+            rows,
+        )
     return s
+
+
+def _z(fit: dict) -> tuple[float, float]:
+    return fit["z"], fit["dz"]
 
 
 def e05(r) -> str:
