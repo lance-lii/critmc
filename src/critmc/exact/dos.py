@@ -149,12 +149,35 @@ def _exact_coefficients(L: int, M: int, guard_digits: int = 40) -> list[int]:
     return coeffs
 
 
-def _verify(coeffs: list[int], n_sites: int) -> None:
-    if sum(coeffs) != 2**n_sites:
+def _check_shape(L: int, M: int) -> None:
+    if L < 2 or M < 2 or L % 2 or M % 2:
+        raise ValueError(f"L and M must be even and at least 2, got {L} x {M}")
+
+
+def _first_excited(L: int, M: int) -> int:
+    """Number of states with four broken bonds, the lowest excitation.
+
+    On a torus at least four sites wide these are the single flipped spins,
+    ``2 N`` states.  An extent of 2 doubles the bonds across it, and a band of
+    whole rings then costs four bonds as well.
+    """
+    if L > 2 and M > 2:
+        return 2 * L * M
+    m = max(L, M)
+    if m == 2:
+        return 12  # 8 single spins and 4 flipped neighbour pairs
+    return 4 * m + m * (m - 1)  # single spins, and bands of 1 .. m - 1 rings
+
+
+def _verify(coeffs: list[int], L: int, M: int) -> None:
+    _check_shape(L, M)
+    if len(coeffs) != L * M + 1:
+        raise ArithmeticError(f"expected {L * M + 1} levels, got {len(coeffs)}")
+    if sum(coeffs) != 2 ** (L * M):
         raise ArithmeticError("sum rule sum_j g_j = 2^N violated")
     if coeffs != coeffs[::-1]:
         raise ArithmeticError("symmetry g_j = g_{N-j} violated")
-    if coeffs[0] != 2 or coeffs[1] != 0 or coeffs[2] != 2 * n_sites:
+    if coeffs[0] != 2 or coeffs[1] != 0 or coeffs[2] != _first_excited(L, M):
         raise ArithmeticError("low-energy degeneracies are wrong")
     if any(g < 0 for g in coeffs):
         raise ArithmeticError("negative density of states")
@@ -216,7 +239,7 @@ class DensityOfStates:
         lines = Path(path).read_text().split()
         L, M = int(lines[0]), int(lines[1])
         g = tuple(int(v) for v in lines[2:])
-        _verify(list(g), L * M)
+        _verify(list(g), L, M)
         return cls(L, M, g)
 
 
@@ -228,13 +251,12 @@ def ising_dos(L: int, M: int | None = None, cache_dir: str | Path | None = None)
     about a minute.
     """
     M = L if M is None else M
-    if L % 2 or M % 2:
-        raise ValueError("L and M must be even")
+    _check_shape(L, M)
     cache = Path(cache_dir) / f"ising_dos_{L}x{M}.txt" if cache_dir is not None else None
     if cache is not None and cache.exists():
         return DensityOfStates.load(cache)
     coeffs = _exact_coefficients(L, M)
-    _verify(coeffs, L * M)
+    _verify(coeffs, L, M)
     dos = DensityOfStates(L, M, tuple(coeffs))
     if cache is not None:
         dos.save(cache)
