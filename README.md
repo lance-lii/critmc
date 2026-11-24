@@ -66,11 +66,15 @@ cd critmc
 ```bash
 python -m venv .venv
 ```
+
+Activate the environment: `source .venv/bin/activate` on macOS/Linux,
+`.venv\Scripts\activate` on Windows. Then
+
 ```bash
-.venv/Scripts/python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
-On macOS/Linux use `.venv/bin/python`. Requires Python ≥ 3.10, numpy, scipy,
+Requires Python ≥ 3.10, numpy, scipy,
 numba, mpmath and matplotlib (`gmpy2` speeds up the arbitrary-precision exact
 solutions).
 
@@ -166,6 +170,9 @@ results/             numerical results of the studies (JSON)
 
 ```bash
 python -m pytest
+```
+```bash
+python -m ruff check .
 ```
 
 The suite runs in about a minute. Statistical tests are seeded, so they are
