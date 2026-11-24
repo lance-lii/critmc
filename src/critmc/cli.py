@@ -12,6 +12,7 @@ Commands
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -22,22 +23,48 @@ from .lattice import make_lattice
 from .models import ON, Ising, Potts
 from .sim import Simulation, TimeSeries
 
+MODEL_OPTIONS = {"field": "ising", "q": "potts", "n": "on"}
+"""Options of ``simulate`` that only one model reads, and that model."""
+
+
+def _positive(text: str) -> float:
+    value = float(text)
+    if not (math.isfinite(value) and value > 0):
+        raise argparse.ArgumentTypeError(f"must be a positive number, got {text}")
+    return value
+
+
+def _non_negative(text: str) -> float:
+    value = float(text)
+    if not (math.isfinite(value) and value >= 0):
+        raise argparse.ArgumentTypeError(f"must be a non-negative number, got {text}")
+    return value
+
+
+def _check_model_options(args, parser: argparse.ArgumentParser) -> None:
+    """Refuse an option the chosen model would silently ignore."""
+    for name, model in MODEL_OPTIONS.items():
+        if getattr(args, name) is not None and args.model != model:
+            parser.error(f"--{name} applies to --model {model} only, not to --model {args.model}")
+
 
 def _model(args):
     lat = make_lattice(args.lattice, args.L)
     if args.model == "ising":
-        return Ising(lat, h=args.field)
+        return Ising(lat, h=0.0 if args.field is None else args.field)
     if args.model == "potts":
-        return Potts(lat, args.q)
+        return Potts(lat, 3 if args.q is None else args.q)
     if args.model in ("xy", "heisenberg", "on"):
-        n = {"xy": 2, "heisenberg": 3}.get(args.model, args.n)
+        n = {"xy": 2, "heisenberg": 3}.get(args.model, 2 if args.n is None else args.n)
         return ON(lat, n)
     raise SystemExit(f"unknown model {args.model}")
 
 
-def _summary(ts: TimeSeries, out=sys.stdout) -> None:
+def _summary(ts: TimeSeries, out=None) -> None:
     from .fss import format_value
     from .stats import gamma_method
+
+    out = sys.stdout if out is None else out  # looked up now, so redirection works
 
     beta = ts.beta
     n = ts.n_sites
@@ -76,6 +103,7 @@ def _summary(ts: TimeSeries, out=sys.stdout) -> None:
 
 
 def cmd_simulate(args) -> int:
+    _check_model_options(args, args.parser)
     model = _model(args)
     beta = 1.0 / args.T if args.T is not None else args.beta
     sim = Simulation(model, beta, args.updates, seed=args.seed, start=args.start)
@@ -158,19 +186,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--lattice", default="square", choices=["chain", "square", "cubic", "triangular"]
     )
     s.add_argument("--L", type=int, default=32)
-    s.add_argument("--q", type=int, default=3, help="Potts states")
-    s.add_argument("--n", type=int, default=2, help="O(n) components")
-    s.add_argument("--field", type=float, default=0.0, help="Ising magnetic field")
+    s.add_argument("--q", type=int, help="Potts states (--model potts, default 3)")
+    s.add_argument("--n", type=int, help="O(n) components (--model on, default 2)")
+    s.add_argument("--field", type=float, help="magnetic field (--model ising, default 0)")
     temp = s.add_mutually_exclusive_group()
-    temp.add_argument("--T", type=float, help="temperature")
-    temp.add_argument("--beta", type=float, default=0.4406867935, help="inverse temperature")
+    temp.add_argument("--T", type=_positive, help="temperature, positive")
+    temp.add_argument(
+        "--beta", type=_non_negative, default=0.4406867935, help="inverse temperature, >= 0"
+    )
     s.add_argument("--updates", default="wolff")
     s.add_argument("--therm", type=int, default=2000)
     s.add_argument("--meas", type=int, default=20000)
     s.add_argument("--seed", type=int, default=1)
     s.add_argument("--start", default="random", choices=["random", "ordered"])
     s.add_argument("--out", type=Path)
-    s.set_defaults(func=cmd_simulate)
+    s.set_defaults(func=cmd_simulate, parser=s)
 
     a = sub.add_parser("analyze", help="analyse saved time series")
     a.add_argument("files", nargs="+", type=Path)
@@ -180,11 +210,11 @@ def build_parser() -> argparse.ArgumentParser:
     esub = e.add_subparsers(dest="what", required=True)
     t = esub.add_parser("thermo", help="u, c, f of an L x L torus (or L -> infinity)")
     t.add_argument("--L", type=int, default=0, help="linear size (0 = thermodynamic limit)")
-    t.add_argument("--T", type=float, nargs="+", required=True)
+    t.add_argument("--T", type=_positive, nargs="+", required=True)
     d = esub.add_parser("dos", help="exact integer density of states (even L)")
     d.add_argument("--L", type=int, required=True)
     d.add_argument("--out", type=Path)
-    z = esub.add_parser("zeros", help="leading Fisher zeros for a sequence of even sizes")
+    z = esub.add_parser("zeros", help="leading Fisher zeros for even sizes L >= 4")
     z.add_argument("sizes", type=int, nargs="+")
     e.set_defaults(func=cmd_exact)
 
