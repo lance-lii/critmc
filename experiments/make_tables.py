@@ -48,16 +48,10 @@ def dev(value, error, exact) -> str:
 
 def e01(r) -> str:
     rows = []
-    names = {
-        "metropolis": "Metropolis",
-        "heatbath": "Heat bath",
-        "sw": "Swendsen–Wang",
-        "wolff": "Wolff",
-    }
     for key, a in r["algorithms"].items():
         rows.append(
             [
-                names.get(key, key),
+                ALGORITHM_NAMES.get(key, key),
                 f"{a['pull_mean']:+.2f}",
                 f"{a['pull_std']:.2f}",
                 f"{a['chi2']:.1f} / {a['dof']}",
@@ -398,6 +392,181 @@ def e10(r) -> str:
     return table(["system", "updates", "N", "10⁶ site updates / s"], rows)
 
 
+ALGORITHM_NAMES = {
+    "metropolis": "Metropolis",
+    "heatbath": "Heat bath",
+    "sw": "Swendsen–Wang",
+    "wolff": "Wolff",
+}
+
+
+def e12(r) -> str:
+    windows = r["windows"]
+    k0 = windows.index(r["default_window"])
+    n_seeds = r["n_seeds"]
+    observables = {"e": "energy", "c": "specific heat"}
+
+    def pm(value, error, digits=3) -> str:
+        return f"{value:.{digits}f} ± {error:.{digits}f}"
+
+    rows = []
+    for key, a in r["algorithms"].items():
+        for obs, label in observables.items():
+            o, p = a[obs], a[obs]["pooled"]
+            rows.append(
+                [
+                    ALGORITHM_NAMES.get(key, key),
+                    label,
+                    f"{o['bias_chi2']:.1f} / {o['bias_dof']}",
+                    f"{o['bias_p']:.2f}",
+                    pm(p["error_ratio"][k0], p["error_ratio_error"][k0]),
+                    f"{p['pull_mean'][k0]:+.3f} ± {p['pull_mean_error'][k0]:.3f}",
+                    pm(p["pull_sd"][k0], p["pull_sd_error"][k0]),
+                    f"{100 * p['within_1'][k0]:.1f}%",
+                    f"{p['beyond_3'][k0]} ({0.0027 * p['n']:.0f})",
+                ]
+            )
+    out = (
+        f"{n_seeds} independent runs per algorithm and temperature, 20 temperatures, "
+        f"Γ-method window S = {r['default_window']:g}. "
+        "Expected for an unbiased sampler with correct errors: χ² ≈ dof, ratio 1, "
+        "mean pull 0, sd 1, 68.3% within 1σ.\n\n"
+    )
+    out += table(
+        [
+            "algorithm",
+            "observable",
+            "bias χ² / dof",
+            "p",
+            "scatter / quoted error",
+            "mean pull",
+            "sd of pulls",
+            "within 1σ",
+            "beyond 3σ (expected)",
+        ],
+        rows,
+    )
+
+    out += "\nWidth of the pulls against the window parameter S, all temperatures:\n\n"
+    rows = []
+    for key, a in r["algorithms"].items():
+        for obs, label in observables.items():
+            p = a[obs]["pooled"]
+            rows.append(
+                [ALGORITHM_NAMES.get(key, key), label]
+                + [f"{sd:.3f}" for sd in p["pull_sd"]]
+                + [f"{p['pull_sd_error'][k0]:.3f}"]
+            )
+    out += table(["algorithm", "observable"] + [f"S = {s:g}" for s in windows] + ["± (each)"], rows)
+
+    out += (
+        "\nWhere the mean pull comes from. An estimate and its own error bar fluctuate "
+        "together, which shifts the mean pull without any bias in the estimate:\n\n"
+    )
+    rows = []
+    for key, a in r["algorithms"].items():
+        for obs, label in observables.items():
+            p = a[obs]["pooled"]
+            rows.append(
+                [
+                    ALGORITHM_NAMES.get(key, key),
+                    label,
+                    f"{p['pull_mean'][k0]:+.3f} ± {p['pull_mean_error'][k0]:.3f}",
+                    f"{p['pull_mean_from_bias'][k0]:+.3f}",
+                    f"{p['pull_mean_from_correlation'][k0]:+.3f}",
+                ]
+            )
+    out += table(
+        ["algorithm", "observable", "mean pull", "from an offset", "from the error bar"], rows
+    )
+
+    tail = r["tail"]
+    temps = r["temperatures"]
+    out += (
+        f"\nWhy the errors come out short. One chain of {tail['runs']} run lengths per "
+        "algorithm and temperature gives the integrated autocorrelation time summed out to "
+        f"{tail['window']:g} τ_int; cut into run-length pieces it gives the time the automatic "
+        "window finds. The square root of their ratio predicts scatter / quoted error "
+        f"(S = {r['default_window']:g}, all temperatures; the last column compares the two "
+        "temperature by temperature). τ_int and the decay time of the tail "
+        "of the autocorrelation function are quoted at the slowest temperature:\n\n"
+    )
+    rows = []
+    for key, a in tail["algorithms"].items():
+        for obs, label in observables.items():
+            c, p = a[obs], a[obs]["pooled"]
+            slow = max(range(len(temps)), key=lambda i, c=c: c["tau_int"][i])
+            rows.append(
+                [
+                    ALGORITHM_NAMES.get(key, key),
+                    label,
+                    f"{temps[slow]:.3g}",
+                    pm(c["tau_int"][slow], c["tau_int_error"][slow], 2),
+                    f"{c['tail_time'][slow]:.1f}",
+                    f"{c['tail_time'][slow] / c['tau_int'][slow]:.1f}",
+                    pm(p["predicted_ratio"][k0], p["predicted_ratio_error"][k0]),
+                    pm(p["measured_ratio"][k0], p["measured_ratio_error"][k0]),
+                    f"{c['chi2']:.1f} / {c['dof']}",
+                ]
+            )
+    out += table(
+        [
+            "algorithm",
+            "observable",
+            "slowest T",
+            "τ_int",
+            "tail decay time",
+            "tail / τ_int",
+            "predicted scatter / error",
+            "measured",
+            "χ² / dof by temperature",
+        ],
+        rows,
+    )
+
+    out += "\nThe same prediction against the window parameter S, measured value in brackets:\n\n"
+    rows = []
+    for key, a in tail["algorithms"].items():
+        for obs, label in observables.items():
+            p = a[obs]["pooled"]
+            rows.append(
+                [ALGORITHM_NAMES.get(key, key), label]
+                + [f"{x:.3f} ({y:.3f})" for x, y in zip(p["predicted_ratio"], p["measured_ratio"])]
+                + [f"{p['measured_ratio_error'][k0]:.3f}"]
+            )
+    out += table(
+        ["algorithm", "observable"] + [f"S = {s:g}" for s in windows] + ["± (measured)"], rows
+    )
+
+    first = next(iter(r["algorithms"].values()))["single_seed"]
+    out += (
+        f"\nOne seed gives {first['n_pulls']} pulls per algorithm (the E01 row). "
+        f"Across the {n_seeds} seeds:\n\n"
+    )
+    header = ["algorithm", "sd of the row's mean pull (if independent)", "rows with KS p < 0.05"]
+    with_e01 = "e01" in first
+    if with_e01:
+        header += ["E01 mean pull", "seeds at least as far", "E01 KS p", "seeds as small"]
+    rows = []
+    for key, a in r["algorithms"].items():
+        s = a["single_seed"]
+        row = [
+            ALGORITHM_NAMES.get(key, key),
+            f"{s['mean_sd']:.3f} ({s['mean_sd_expected']:.3f})",
+            f"{100 * s['share_ks_below_0.05']:.1f}%",
+        ]
+        if with_e01:
+            e = s["e01"]
+            row += [
+                f"{e['pull_mean']:+.2f}",
+                f"{100 * e['share_mean_as_far']:.1f}%",
+                f"{e['ks_p']:.2f}",
+                f"{100 * e['share_ks_as_small']:.1f}%",
+            ]
+        rows.append(row)
+    return out + table(header, rows)
+
+
 SECTIONS = [
     ("e01_validation", "E01 — validation against the exact finite-lattice solution", e01),
     ("e02_exact", "E02 — exact results", e02),
@@ -409,6 +578,7 @@ SECTIONS = [
     ("e08_ising3d_fss", "E08 — 3D Ising model", e08),
     ("e09_spin_glass", "E09 — 3D Edwards–Anderson spin glass", e09),
     ("e10_benchmarks", "E10 — kernel throughput", e10),
+    ("e12_calibration", "E12 — many-seed calibration of samplers and error bars", e12),
 ]
 
 
