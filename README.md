@@ -90,7 +90,7 @@ sim = Simulation(Ising(square(L)), beta, updates="wolff", seed=42)
 sim.thermalize(2_000)
 ts = sim.run(50_000)
 
-e = gamma_method(ts["e"])                      # error bar with autocorrelations
+e = gamma_method(ts["e"])  # error bar with autocorrelations
 print(e.value, e.error, "exact:", kaufman.energy(beta, L))
 ```
 
@@ -147,6 +147,7 @@ into [`docs/results_tables.md`](docs/results_tables.md).
 | E09 spin glass | 3D Edwards–Anderson transition from correlation-length crossings |
 | E10 benchmarks | Kernel throughput |
 | E11 snapshots | What the Ising and BKT transitions look like (configurations and vortices; figure only) |
+| E12 calibration | E01 repeated with 200 seeds: is any sampler biased, and how far off are the error bars? |
 
 ## Documentation
 
@@ -163,7 +164,7 @@ into [`docs/results_tables.md`](docs/results_tables.md).
 ```
 src/critmc/          library (kernels, models, drivers, exact, stats, analysis)
 tests/               pytest suite (statistical tests against exact results)
-experiments/         the studies (E01–E11), run_all.py and the table generator
+experiments/         the studies (E01–E12), run_all.py and the table generator
 examples/            short scripts showing the API
 docs/                theory, report, figures, generated tables
 results/             numerical results of the studies (JSON)
