@@ -160,12 +160,108 @@ The pooled distribution of 160 pulls is consistent with $\mathcal N(0,1)$
 (Kolmogorov–Smirnov $p = 0.09$), and every algorithm has $\chi^2/\text{dof}$
 between 0.78 and 0.95. There is no sign of bias, and the Γ-method errors are
 accurate, including those of the specific heat at $T_c$ where
-autocorrelations are strongest. Metropolis has the largest mean pull (+0.34)
-and the smallest KS p-value (0.03). With four algorithms tested, a p-value
-this small arises by chance about one time in nine. Its pulls are also
-narrower than normal (sd 0.83), so its error bars are, if anything, slightly
-*conservative*. This is expected: for slowly decaying autocorrelations the
-automatic window errs towards larger $\tau_\text{int}$.
+autocorrelations are strongest. Metropolis has the largest mean pull (+0.34),
+the smallest KS p-value (0.03) and the narrowest pulls (sd 0.83). With four
+algorithms tested, a p-value this small arises by chance about one time in
+nine. Forty pulls cannot say more than that, so the next section repeats the
+whole experiment with 200 seeds.
+
+### 4.1 The same test with 200 seeds (E12)
+
+**Question.** One seed gives 40 pulls per algorithm. That resolves a bias of
+about a sixth of an error bar and an error bar that is wrong by about 11%.
+What do 4,000 pulls per algorithm and observable show?
+
+**Setup.** The E01 runs, repeated with 200 independent random streams per
+algorithm and temperature. Three quantities are tested separately. *Bias*:
+the mean of the 200 estimates against the exact value, with the error of
+that mean taken from their scatter, so the test does not depend on the
+quoted errors. *Error-bar size*: the scatter of the 200 estimates divided by
+the root-mean-square quoted error. *Pulls*: as in E01.
+
+| algorithm | observable | bias χ² / dof (p) | scatter / quoted error | sd of pulls | beyond 3σ (expected) |
+|---|---|---|---|---|---|
+| Metropolis | energy | 12.9 / 20 (0.88) | 0.994 ± 0.011 | 0.994 ± 0.011 | 12 (11) |
+| Metropolis | specific heat | 14.0 / 20 (0.83) | 1.013 ± 0.011 | 1.014 ± 0.011 | 13 (11) |
+| Heat bath | energy | 22.7 / 20 (0.30) | 1.015 ± 0.012 | 1.017 ± 0.012 | 16 (11) |
+| Heat bath | specific heat | 15.5 / 20 (0.75) | 1.034 ± 0.011 | 1.041 ± 0.012 | 21 (11) |
+| Swendsen–Wang | energy | 27.6 / 20 (0.12) | 1.005 ± 0.011 | 1.007 ± 0.011 | 12 (11) |
+| Swendsen–Wang | specific heat | 20.0 / 20 (0.46) | 0.997 ± 0.011 | 0.997 ± 0.011 | 9 (11) |
+| Wolff | energy | 30.3 / 20 (0.07) | 1.016 ± 0.011 | 1.018 ± 0.011 | 11 (11) |
+| Wolff | specific heat | 16.8 / 20 (0.66) | 1.004 ± 0.011 | 1.004 ± 0.011 | 9 (11) |
+
+![Many-seed calibration](figures/e12_calibration_pulls.png)
+
+*(a) Bias of the mean of 200 runs in units of its own error, for every
+algorithm, observable and temperature. (b) Width of the specific-heat pulls
+at each temperature. (c) Scatter over quoted error of the specific heat
+against the window parameter S: measured (points) and predicted from the
+autocorrelation function of one long chain (dashed).*
+
+**No bias.** None of the eight bias tests fails (smallest p = 0.07, Wolff
+energy). The mean of 200 runs is fourteen times more precise than one run,
+so a bias larger than about 0.2 of a single-run error bar at any one
+temperature is excluded.
+
+**The Metropolis row of E01 was an unlucky draw.** Its pulls have mean
+−0.009 ± 0.016 (energy), +0.002 ± 0.016 (specific heat) and sd 0.994 and
+1.014: neither shifted nor narrow. Among the 200 seeds, 7% give a 40-pull row
+with a mean at least as far from zero as +0.34, and 3% a KS p-value as small
+as 0.03. The row mean scatters by 0.175 rather than the 0.158 of 40
+independent pulls, because the energy and the specific heat of one run are
+correlated.
+
+**Heat-bath error bars are a few percent short.** For the specific heat the
+scatter is 1.034 ± 0.011 times the quoted error, the pulls have sd
+1.041 ± 0.012, and 21 pulls lie beyond 3σ where 11 are expected. The other
+seven combinations are within 1.5σ of honest. The shortfall depends on the
+window (panel c): 7.5% at $S = 1$, 3.4% at the default $S = 1.5$, below 0.5%
+for $S\ge 3$. The single-temperature values of panel b, each known to ±0.05,
+are too noisy to say where it is largest.
+
+**Cause: the automatic window stops before the tail is summed.** The window
+criterion assumes that the autocorrelation function decays on the time scale
+$S\,\tau_\text{int}$. For the heat-bath specific heat at $T = 2.2$ the tail
+decays with a time of 34.8 sweeps while $\tau_\text{int} = 9.49(13)$, a
+factor 3.7; for the cluster algorithms the factor is 1.0–1.4. One chain of
+40 run lengths per algorithm and temperature measures this directly. Summed
+out to $20\,\tau_\text{int}$ it gives the true integrated time; cut into
+pieces of run length it gives the time the automatic window finds. The
+square root of their ratio predicts scatter over quoted error, with no
+adjustable parameter:
+
+| algorithm | observable | predicted | measured |
+|---|---|---|---|
+| Metropolis | energy | 1.003 ± 0.001 | 0.994 ± 0.011 |
+| Metropolis | specific heat | 1.008 ± 0.001 | 1.013 ± 0.011 |
+| Heat bath | energy | 1.011 ± 0.002 | 1.015 ± 0.012 |
+| Heat bath | specific heat | 1.032 ± 0.004 | 1.034 ± 0.011 |
+| Swendsen–Wang | energy | 0.999 ± 0.001 | 1.005 ± 0.011 |
+| Swendsen–Wang | specific heat | 1.002 ± 0.001 | 0.997 ± 0.011 |
+| Wolff | energy | 1.001 ± 0.001 | 1.016 ± 0.011 |
+| Wolff | specific heat | 1.000 ± 0.001 | 1.004 ± 0.011 |
+
+The prediction also follows the measured dependence on $S$ (panel c), and
+puts the largest shortfall, 11%, at $T = 2.3$ just above $T_c$. The
+Γ-method therefore errs towards *smaller* $\tau_\text{int}$ when the tail is
+slow, which is the opposite of conservative. For local updates near $T_c$,
+$S = 3$ removes the effect at this run length.
+
+**The mean pull is not a bias test.** The heat-bath specific heat has a mean
+pull of −0.051 ± 0.016, three standard errors from zero, although its bias
+test passes. An estimate and its own error bar fluctuate together: a run
+that happens to fluctuate strongly gives both a larger specific heat and a
+larger error. To first order this covariance contributes −0.036 to the mean
+pull and an offset of the estimate −0.017.
+
+**What is not explained.** Temperature by temperature, measured and predicted
+error ratios differ by slightly more than their errors allow:
+$\chi^2 = 106.8$ for 80 values (energy, $p = 0.024$) and 105.0 (specific
+heat, $p = 0.032$). The two are not independent tests, since both come from
+the same runs. The random streams of different algorithms and temperatures
+are uncorrelated (mean correlation of the estimates 0.00 ± 0.02), and a
+bootstrap over seeds reproduces the errors of the ratios, so neither explains
+it. At 200 seeds this is a 2σ effect and is left open.
 
 ## 5. Exact results (E02)
 
@@ -597,9 +693,11 @@ double (bias below $n/2^{53}$).
 **What the exact references establish.** The 2D Ising model tests every layer
 of the pipeline against exact answers:
 
-* the samplers: 160 pulls consistent with $\mathcal N(0,1)$ (E01);
+* the samplers: 160 pulls consistent with $\mathcal N(0,1)$ (E01), and no
+  bias in the mean of 200 independent runs at any of 20 temperatures (E12);
 * the error analysis: Γ-method errors of non-linear estimators have the right
-  size (E01), jackknife errors of reweighted curves reproduce the exact
+  size to within 2% for Metropolis and the cluster algorithms and are 3.4%
+  short for the heat-bath specific heat (E12), jackknife errors of reweighted curves reproduce the exact
   finite-size specific heat at six sizes, with one 2.8σ deviation (E03);
 * the reweighting: the MBAR free energies agree with $\ln Z$ from Kaufman's
   formula (unit tests);
@@ -667,8 +765,9 @@ python experiments/run_all.py
 
 The test suite runs in about a minute. Run from scratch, the campaign takes
 roughly three hours on a 24-thread desktop (i7-13700K, 6–8 worker processes);
-E03, E04, E08 and E09 account for most of that time. Every number in this
-report except the E10 timings is reproduced exactly from the root seed. Each
+E03, E04, E08 and E09 account for most of that time; E12 adds about half an
+hour on a laptop. Every number in this report except the E10 timings is
+reproduced exactly from the root seed. Each
 Markov chain, disorder sample and bootstrap draws from its own keyed random
 stream, so the results do not depend on the number of workers or on the
 order in which tasks finish. Raw time series are cached, so an interrupted
