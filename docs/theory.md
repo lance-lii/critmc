@@ -157,6 +157,15 @@ $\tau\sim\xi^z\to L^z$ with $z\approx 2.17$ (Nightingale & Blöte 1996):
 collectively and reduce $z$ to $\approx 0.25$ (or a logarithm). Experiment E04
 measures $\tau_\text{int}(L)$ for all four algorithms at the exact $\beta_c$.
 
+The exponent belongs to the slowest mode, with relaxation time
+$\tau_\text{exp}$. An observable's integrated time is
+$\tau_\text{int}\approx A\,\tau_\text{exp}$ plus faster contributions, $A$
+being the share of its fluctuations carried by that mode, so
+$\tau_\text{int}\sim L^z$ holds only if $A$ tends to a constant. For the
+energy of the 2D Ising model $A\propto 1/c\sim1/\ln L$, and a power-law fit to
+$\tau_\text{int}(E)$ at accessible sizes returns an exponent well below $z$
+(report, section 7).
+
 ---
 
 ## 3. Exact solutions

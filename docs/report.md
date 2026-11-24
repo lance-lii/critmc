@@ -423,10 +423,48 @@ autocorrelation times come from the Γ-method and are converted to sweeps
 
 ![Autocorrelation times](figures/e04_dynamics_tau.png)
 
-For the local algorithms the magnetisation, which couples to the slowest
-mode, gives $z = 2.12(3)$ and $2.18(5)$, consistent with the accepted 2.17.
-The energy relaxes faster and shows a smaller *effective* exponent at these
-sizes, a well-known correction effect. Heat bath is about three times slower
+For the local algorithms $m^2$ gives $z = 2.12(3)$ and $2.18(5)$, consistent
+with the accepted 2.17. The energy gives 1.80(2) and 1.90(3). This is the
+same exponent seen through a logarithm, not a second, smaller one.
+
+The autocorrelation function of the energy ends in the same slow decay as
+that of $m^2$: a fit $\rho(t) = A\,e^{-t/\tau_\text{exp}}$ at lags between
+0.75 and 2.5 $\tau_\text{int}(m^2)$ gives the same $\tau_\text{exp}$ for both,
+within its error, at every size. What differs is the share $A$ of the
+fluctuations that this slowest mode carries. For $m^2$ it stays between 0.73
+and 0.95. For the energy it shrinks as the lattice grows, roughly in
+proportion to $1/c(L)$, where $c\sim\ln L$ is the specific heat of the
+$L\times L$ torus (exact, from Kaufman's solution):
+
+| L | 8 | 16 | 32 | 64 | 128 |
+|---|---|---|---|---|---|
+| $c(L)$ | 1.146 | 1.499 | 1.847 | 2.192 | 2.536 |
+| Metropolis $A_E$ | 0.77(2) | 0.54(2) | 0.35(1) | 0.30(2) | 0.27(2) |
+| Metropolis $A_E\,c$ | 0.88(2) | 0.82(3) | 0.64(3) | 0.65(4) | 0.67(5) |
+| Heat bath $A_E$ | 0.59(1) | 0.43(4) | 0.37(3) | 0.30(4) | 0.25(2) |
+| Heat bath $A_E\,c$ | 0.68(1) | 0.65(5) | 0.68(6) | 0.66(8) | 0.62(6) |
+
+A plausible reading: the logarithm in $c$ adds up equal contributions to the
+energy fluctuations from every length scale between the lattice spacing and
+$L$, and only the largest scale needs $L^z$ sweeps to relax. The integrated
+time, which weights each scale by its share, then grows like
+$\tau_\text{int}(E)\propto L^z/c(L)$. On a log-log plot the factor $1/c$
+lowers the slope by $\Delta\ln c/\Delta\ln L$, which is 0.25 between
+$L = 16$ and 128, so a pure $L^{2.17}/c$ law would be fitted as $z = 1.91$.
+Multiplying the measured times by $c(L)$ removes the factor:
+
+| algorithm | z from τ_int(E) | expected for L^z/c | z from τ_int(E)·c | z from τ_exp |
+|---|---|---|---|---|
+| Metropolis | 1.80(2) | 1.91 | 2.05(2) | 2.13(3) |
+| Heat bath | 1.90(3) | 1.91 | 2.15(3) | 2.23(6) |
+
+For heat bath this accounts for the whole difference. For Metropolis it
+accounts for about two thirds: its $A_E\,c$ is still falling between
+$L = 16$ and 32, which lowers the fitted slope further, and the corrected
+value remains below 2.17 by several standard errors. The exponent that the
+decay time itself gives agrees with the one from $m^2$.
+
+Heat bath is about three times slower
 than sequential Metropolis at equal sweep count. Both cluster algorithms
 remove critical slowing down almost completely, with $z\approx0.2$–$0.3$ in
 sweep units. At $L = 128$ one Wolff sweep equivalent decorrelates the
