@@ -117,9 +117,9 @@ def parse_updates(updates: str) -> list[tuple[str, int | None]]:
             continue
         if "*" in token:
             count, name = token.split("*", 1)
+            if not count.isdecimal() or int(count) < 1:
+                raise ValueError(f"repetition count must be a positive integer in {token!r}")
             k = int(count)
-            if k < 1:
-                raise ValueError(f"repetition count must be positive in {token!r}")
             rows.append((name, k))
         else:
             rows.append((token, None))
@@ -192,6 +192,8 @@ class Simulation:
 
     def thermalize(self, n_meas: int, *, tune: bool = True, n_chunks: int = 10) -> dict[str, Any]:
         """Discard ``n_meas`` measurements, tuning adaptive parameters on the way."""
+        if n_meas < 0:
+            raise ValueError("n_meas must not be negative")
         n_chunks = max(1, min(n_chunks, n_meas))
         sizes = np.diff(np.linspace(0, n_meas, n_chunks + 1).astype(int))
         n_metro = self._count(METROPOLIS, METROPOLIS_RANDOM)
