@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from common import banner, data_dir, figure_path, parse_args, save_results
+from common import banner, figure_path, parse_args, run_dir, save_results
 
 from critmc import cubic
 from critmc import plotting as P
@@ -45,6 +45,17 @@ def run_sample(job) -> TemperingRun:
     temps = temperatures(L)
     if path.exists():
         z = np.load(path)
+        # files written before the seed was recorded can only be checked for shape
+        same = (
+            z["acc"].shape[0] == n_bins
+            and np.array_equal(np.sort(z["temperatures"]), np.sort(temps))
+            and ("seed" not in z.files or int(z["seed"]) == seed)
+        )
+        if not same:
+            raise ValueError(
+                f"{path} was produced with other settings (seed, run length or "
+                "temperatures); use a different CRITMC_DATA or delete it"
+            )
         return TemperingRun(
             z["temperatures"], L**3, 6, z["acc"], z["swap_rate"], z["label_hist"], z["trips"]
         )
@@ -60,6 +71,7 @@ def run_sample(job) -> TemperingRun:
         swap_rate=run.swap_rate,
         label_hist=run.label_hist,
         trips=run.trips,
+        seed=seed,
     )
     tmp.replace(path)
     return run
@@ -138,7 +150,7 @@ def main():
     args = parse_args(__doc__)
     started = time.time()
     sizes = [4, 6] if args.quick else sorted(CONFIG)
-    out_dir = data_dir(NAME + ("_q" if args.quick else ""))
+    out_dir = run_dir(NAME, args)
     averages = {}
     for L in sizes:
         m, n_samples, n_bins = CONFIG[L]

@@ -3,7 +3,8 @@
 Every experiment writes
 
 * raw time series to ``$CRITMC_DATA/<exp>/`` (default ``data/<exp>/``, git-ignored;
-  existing files are reused, so interrupted campaigns resume where they stopped),
+  existing files are reused, so interrupted campaigns resume where they stopped;
+  ``--quick`` runs and runs with a non-default ``--seed`` get directories of their own),
 * numerical results to ``results/<exp>.json``,
 * figures to ``docs/figures/<exp>_*.png``.
 
@@ -29,11 +30,26 @@ RESULTS = ROOT / "results"
 FIGURES = ROOT / "docs" / "figures"
 
 
+DEFAULT_SEED = 20260924
+
+
 def data_dir(name: str) -> Path:
     base = Path(os.environ.get("CRITMC_DATA", ROOT / "data"))
     path = base / name
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def run_dir(name: str, args: argparse.Namespace) -> Path:
+    """Raw-data directory of one experiment at these settings.
+
+    Cached files are named after lattice size and run index only, so data taken
+    with other statistics or another seed must not share a directory.
+    """
+    tag = name + ("_q" if args.quick else "")
+    if args.seed != DEFAULT_SEED:
+        tag += f"_seed{args.seed}"
+    return data_dir(tag)
 
 
 def parse_args(description: str) -> argparse.Namespace:
@@ -42,7 +58,7 @@ def parse_args(description: str) -> argparse.Namespace:
     p.add_argument(
         "--workers", type=int, default=None, help="worker processes (default: all cores - 1)"
     )
-    p.add_argument("--seed", type=int, default=20260924, help="root seed of all random streams")
+    p.add_argument("--seed", type=int, default=DEFAULT_SEED, help="root seed of all random streams")
     p.add_argument("--no-plots", action="store_true")
     p.add_argument("--fresh", action="store_true", help="recompute cached exact results (E02)")
     p.add_argument("--replot", action="store_true", help="redraw figures from results/*.json only")
