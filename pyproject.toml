@@ -28,7 +28,7 @@ dependencies = [
 Repository = "https://github.com/lance-lii/critmc"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4", "gmpy2>=2.1", "ruff>=0.6"]
+dev = ["pytest>=7.4", "pytest-xdist>=3.5", "gmpy2>=2.1", "ruff>=0.6"]
 
 [project.scripts]
 critmc = "critmc.cli:main"
