@@ -185,12 +185,18 @@ class SizeData:
             hi += 1
         return float(grid[lo]), float(grid[hi])
 
-    def observables(self, beta: float, mh: MultiHistogram | None = None) -> dict[str, float]:
+    def observables(
+        self, beta: float, mh: MultiHistogram | None = None, keys: Sequence[str] | None = None
+    ) -> dict[str, float]:
+        """Observables at ``beta`` (all of them, or just ``keys``)."""
         mh = self.full if mh is None else mh
         w = mh.weights(beta)
         return observables_from_weights(
-            w, mh.energy, mh.obs["absm"], mh.obs["m2"], mh.obs["m4"], beta, self.n_sites
+            w, mh.energy, mh.obs["absm"], mh.obs["m2"], mh.obs["m4"], beta, self.n_sites, keys
         )
+
+    def _observable(self, beta: float, mh: MultiHistogram, key: str) -> float:
+        return self.observables(beta, mh, (key,))[key]
 
     # -- estimators -----------------------------------------------------------
     def replicate_values(self, fn: Callable[[MultiHistogram], object]):
@@ -216,7 +222,7 @@ class SizeData:
         """``(value, error, replicate matrix)`` of observable ``key`` on a beta grid."""
 
         def fn(mh):
-            return np.array([self.observables(b, mh)[key] for b in betas])
+            return np.array([self._observable(b, mh, key) for b in betas])
 
         full, reps = self.replicate_values(fn)
         value, err = _jackknife(full, reps)
@@ -245,9 +251,9 @@ def binder_crossing(
     """
 
     def solve(mh1, mh2):
-        diff = lambda b: d1.observables(b, mh1)[key] - d2.observables(b, mh2)[key]  # noqa: E731
+        diff = lambda b: d1._observable(b, mh1, key) - d2._observable(b, mh2, key)  # noqa: E731
         b = _root(diff, bracket)
-        return np.array([b, d1.observables(b, mh1)[key]])
+        return np.array([b, d1._observable(b, mh1, key)])
 
     full = solve(d1.full, d2.full)
     var = np.zeros(2)
@@ -271,7 +277,7 @@ def peak(data: SizeData, key: str, bracket: tuple[float, float]) -> dict[str, Es
     """Location and height of the maximum of observable ``key`` inside ``bracket``."""
 
     def solve(mh):
-        f = lambda b: -data.observables(b, mh)[key]  # noqa: E731
+        f = lambda b: -data._observable(b, mh, key)  # noqa: E731
         grid = np.linspace(*bracket, 41)
         vals = [f(b) for b in grid]
         i = int(np.clip(np.argmin(vals), 1, len(grid) - 2))
