@@ -23,7 +23,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
-from scipy import optimize, stats
+from scipy import optimize, special
 from scipy.optimize import brentq
 
 from .reweight import MultiHistogram, observables_from_weights
@@ -302,7 +302,8 @@ class FitResult:
 
     @property
     def p_value(self) -> float:
-        return float(stats.chi2.sf(self.chi2, self.dof)) if self.dof > 0 else float("nan")
+        # chdtrc is the chi-square survival function; importing scipy.stats for it is slow
+        return float(special.chdtrc(self.dof, self.chi2)) if self.dof > 0 else float("nan")
 
     @property
     def chi2_dof(self) -> float:
