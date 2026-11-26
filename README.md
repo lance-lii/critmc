@@ -53,7 +53,7 @@ that *fail* and why, is in [`docs/report.md`](docs/report.md).
 
 Every sampler is tested statistically against an exact result: brute-force
 enumeration, Kaufman's formula, the exact density of states, or the
-transfer-operator solution of O(n) rings. The suite has 180 tests.
+transfer-operator solution of O(n) rings.
 
 ## Installation
 
