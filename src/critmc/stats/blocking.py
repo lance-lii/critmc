@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike
-from scipy.stats import chi2
+from scipy.special import gammaincinv
 
 from .autocorr import _as_real, _as_series
 
@@ -178,7 +178,8 @@ def blocking_error(x: ArrayLike, alpha: float = 0.01) -> BlockingResult:
         terms = n_k * ((n_k - 1.0) * var_k / n_k**2 + gam_k) ** 2 / var_k**2
     terms[var_k == 0] = 0.0  # constant blocked series: nothing left to test
     m = np.cumsum(terms[::-1])[::-1]
-    passed = np.flatnonzero(m < chi2.ppf(1.0 - alpha, d - np.arange(d)))
+    # 2 P^-1(df/2, 1 - alpha) is the chi-square quantile; importing scipy.stats for it is slow
+    passed = np.flatnonzero(m < 2.0 * gammaincinv((d - np.arange(d)) / 2, 1.0 - alpha))
     j = int(passed[0]) if passed.size else d - 1
     return BlockingResult(
         mean=mu,
