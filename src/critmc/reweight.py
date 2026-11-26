@@ -277,15 +277,29 @@ class MultiHistogram:
         return self._fs + (self.betas - self.betas[0]) * self._shift
 
     # -- estimates ------------------------------------------------------------
+    _ld_cache: tuple[np.ndarray, np.ndarray] | None = None
+
+    def _solved_log_denominator(self) -> np.ndarray:
+        """``ln D(E)`` at the current free energies.
+
+        It does not depend on the target beta, so it is computed once.
+        ``solve`` binds a new array to ``_fs``, which invalidates the entry.
+        """
+        if self._ld_cache is None or self._ld_cache[0] is not self._fs:
+            ld = self._log_denominator(self._fs)
+            ld.flags.writeable = False
+            self._ld_cache = (self._fs, ld)
+        return self._ld_cache[1]
+
     def _sample_log_weights(self, beta: float) -> np.ndarray:
-        ld = self._log_denominator(self._fs)
+        ld = self._solved_log_denominator()
         per_unique = -beta * self._u_energy - ld
         return per_unique[self._inverse] + self.sample_logw
 
     def log_z(self, beta) -> np.ndarray:
         """``ln Z(beta)`` relative to ``Z(beta_0)``, i.e. ``-f(beta)``."""
         beta = np.atleast_1d(np.asarray(beta, dtype=np.float64))
-        ld = self._log_denominator(self._fs)
+        ld = self._solved_log_denominator()
         mult = self._u_logmult
         out = np.array([logsumexp(mult - b * self._u_energy - ld) for b in beta])
         # undo the energy shift; normalised so that ln Z(beta_0) = 0
