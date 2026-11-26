@@ -15,8 +15,9 @@ from pathlib import Path
 import matplotlib as mpl
 import numpy as np
 
+# pyplot is imported by figure() and save(): it is slow to load, and runs that draw
+# nothing (--no-plots, the worker processes of an experiment) never need it
 mpl.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
 
 __all__ = [
     "SURFACE",
@@ -124,6 +125,8 @@ def ordinal_colors(n: int) -> list[str]:
 
 def figure(ncols: int = 1, nrows: int = 1, width: float = 3.4, height: float = 2.7, **kw):
     """Figure with ``nrows x ncols`` panels of the given size (inches)."""
+    import matplotlib.pyplot as plt
+
     setup()
     fig, axes = plt.subplots(
         nrows, ncols, figsize=(width * ncols, height * nrows), constrained_layout=True, **kw
@@ -222,6 +225,8 @@ def label_end(ax, x, y, text: str, *, dx: float = 4, dy: float = 0, color=INK_2)
 
 
 def save(fig, path: str | Path) -> Path:
+    import matplotlib.pyplot as plt
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path)
