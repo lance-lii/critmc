@@ -23,6 +23,7 @@ log space and, for discrete energies, over distinct energy values only.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import cache
 
 import numpy as np
 from scipy.special import logsumexp
@@ -119,34 +120,40 @@ def canonical_observables(
 
 
 def observables_from_weights(
-    w, energy, absm, m2, m4, beta: float, n_sites: int
+    w, energy, absm, m2, m4, beta: float, n_sites: int, keys: Sequence[str] | None = None
 ) -> dict[str, float]:
-    """The estimators of :func:`canonical_observables` for given normalised weights."""
+    """The estimators of :func:`canonical_observables` for given normalised weights.
+
+    With ``keys``, only those estimators are computed, and only the weighted
+    averages they need; the values are the same either way.
+    """
     e = energy
-    me = w @ e
-    me2 = w @ (e * e)
-    a = w @ absm
-    b = w @ m2
-    d = w @ m4
-    ae = w @ (absm * e)
-    be = w @ (m2 * e)
-    de = w @ (m4 * e)
-    db = b * me - be
-    dd = d * me - de
+    # weighted averages, each evaluated on first use; the products cost a temporary array
+    me = cache(lambda: w @ e)
+    me2 = cache(lambda: w @ (e * e))
+    a = cache(lambda: w @ absm)
+    b = cache(lambda: w @ m2)
+    d = cache(lambda: w @ m4)
+    ae = cache(lambda: w @ (absm * e))
+    be = cache(lambda: w @ (m2 * e))
+    de = cache(lambda: w @ (m4 * e))
+    db = cache(lambda: b() * me() - be())
+    dd = cache(lambda: d() * me() - de())
     n = float(n_sites)
-    return {
-        "e": me / n,
-        "c": beta * beta * (me2 - me * me) / n,
+    estimators = {
+        "e": lambda: me() / n,
+        "c": lambda: beta * beta * (me2() - me() * me()) / n,
         "absm": a,
         "m2": b,
         "m4": d,
-        "chi": beta * n * (b - a * a),
-        "chi0": beta * n * b,
-        "U": 1.0 - d / (3.0 * b * b),
-        "dU": -(dd / (b * b) - 2.0 * d * db / b**3) / 3.0,
-        "dlogm": me - ae / a,
-        "dlogm2": me - be / b,
+        "chi": lambda: beta * n * (b() - a() * a()),
+        "chi0": lambda: beta * n * b(),
+        "U": lambda: 1.0 - d() / (3.0 * b() * b()),
+        "dU": lambda: -(dd() / (b() * b()) - 2.0 * d() * db() / b() ** 3) / 3.0,
+        "dlogm": lambda: me() - ae() / a(),
+        "dlogm2": lambda: me() - be() / b(),
     }
+    return {k: estimators[k]() for k in (estimators if keys is None else keys)}
 
 
 class MultiHistogram:
