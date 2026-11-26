@@ -21,6 +21,11 @@ written in a manifestly single-valued form:
 * the unpaired ``gamma_M`` enters through ``cosh gamma_M = c + 1`` and the
   analytic ``sinh gamma_M = cosh 2K (1 + sinh 2K) / sinh 2K``.
 
+The grid has ``S`` points, the smallest power of two with ``S >= N``.  If
+``S = N``, then ``x_k^N = -1`` folds ``g_N`` onto ``g_0``; both equal 2 (two uniform
+and two staggered states), so they are filled in after checking that the folded
+coefficient ``g_0 - g_N`` vanishes.
+
 Hence no branch choices are needed anywhere.  With ``~0.3 N`` significant
 digits (mpmath) the transform returns integers to within ``10^-20``; the
 result is verified against the sum rule ``sum_j g_j = 2^N``, the symmetry
@@ -122,8 +127,11 @@ def _fft(values: list, inverse: bool = False) -> list:
 
 def _exact_coefficients(L: int, M: int, guard_digits: int = 40) -> list[int]:
     n_sites = L * M
+    # g_0 .. g_N are N + 1 coefficients, but g_0 = g_N = 2 is known (the two uniform and
+    # the two staggered states), so N points are enough: when N is a power of two this
+    # halves the number of evaluations of P
     size = 1
-    while size < n_sites + 1:
+    while size < n_sites:
         size <<= 1
     dps = int(0.30103 * n_sites) + guard_digits + 5 * int(np.log10(size) + 1)
     with mp.workdps(dps):
@@ -138,7 +146,7 @@ def _exact_coefficients(L: int, M: int, guard_digits: int = 40) -> list[int]:
         spec = _fft(values)
         coeffs: list[int] = []
         tol = mp.mpf(10) ** -10
-        for jj in range(n_sites + 1):
+        for jj in range(min(size, n_sites + 1)):
             val = spec[jj] * mp.expjpi(-mp.mpf(jj) / size) / size
             nearest = int(mp.nint(val.real))
             if abs(val.real - nearest) > tol or abs(val.imag) > tol:
@@ -146,6 +154,12 @@ def _exact_coefficients(L: int, M: int, guard_digits: int = 40) -> list[int]:
                     f"precision loss extracting g_{jj} (L={L}); increase guard_digits"
                 )
             coeffs.append(nearest)
+    if size == n_sites:
+        # x_k^N = -1 on the twisted grid, so g_N folds onto g_0 with a minus sign
+        if coeffs[0] != 0:
+            raise ArithmeticError(f"g_0 and g_N differ (L={L}); increase guard_digits")
+        coeffs[0] = 2
+        coeffs.append(2)
     return coeffs
 
 
