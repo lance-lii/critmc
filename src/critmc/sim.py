@@ -246,14 +246,24 @@ class Simulation:
         if n_meas < 1:
             raise ValueError("n_meas must be positive")
         t0 = time.perf_counter()
-        parts: list[dict[str, np.ndarray]] = []
+        raw: dict[str, np.ndarray] = {}
         done = 0
         while done < n_meas:
             k = min(chunk, n_meas - done)
-            parts.append(self._advance(k))
+            part = self._advance(k)
+            if k == n_meas:  # a single chunk is the result as it stands
+                raw = part
+            else:
+                # full-length streams are allocated once, so only one extra chunk is alive
+                if not raw:
+                    raw = {
+                        key: np.empty((n_meas, *v.shape[1:]), dtype=v.dtype)
+                        for key, v in part.items()
+                    }
+                for key, v in part.items():
+                    raw[key][done : done + k] = v
             done += k
         wall = time.perf_counter() - t0
-        raw = {key: np.concatenate([p[key] for p in parts]) for key in parts[0]}
         self.n_meas += n_meas
 
         aux = raw["aux"]
