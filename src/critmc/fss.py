@@ -402,13 +402,18 @@ def collapse_quality(curves: dict[int, tuple], beta_c: float, inv_nu: float, kap
     total = 0.0
     count = 0
     for p, (xp, yp, dyp) in enumerate(scaled):
+        # the cell of every other curve that brackets each x_p, found one curve pair at a time
+        cells = [
+            [min(max(j, 0), len(xq) - 2) for j in (xq.searchsorted(xp) - 1).tolist()]
+            for xq, _, _ in scaled
+        ]
         for i in range(len(xp)):
             xi = xp[i]
             px, py, pw = [], [], []
             for q, (xq, yq, dyq) in enumerate(scaled):
                 if q == p or xi < xq[0] or xi > xq[-1]:
                     continue
-                j = int(np.clip(np.searchsorted(xq, xi) - 1, 0, len(xq) - 2))
+                j = cells[q][i]
                 for k in (j, j + 1):
                     px.append(xq[k])
                     py.append(yq[k])
