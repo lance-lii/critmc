@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# a new push to a pull request makes the run for the previous commit obsolete;
+# runs on main get a group of their own and are never cancelled
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
