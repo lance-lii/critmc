@@ -138,10 +138,37 @@ def metropolis_sweep(s, nbr, beta, step, rng, random_order, trial, field):
 
 
 @njit(cache=True)
+def _overrelax_xy(s, nbr):
+    """:func:`overrelax_sweep` for two components, written out.
+
+    The compiler cannot unroll loops over ``s.shape[1]``.  The operations and
+    their order are those of the general loop, so the spins agree bit for bit.
+    """
+    n, z = nbr.shape
+    for i in range(n):
+        fx = 0.0
+        fy = 0.0
+        for k in range(z):
+            j = nbr[i, k]
+            fx += s[j, 0]
+            fy += s[j, 1]
+        hh = fx * fx + fy * fy
+        sh = s[i, 0] * fx + s[i, 1] * fy
+        if hh == 0.0:
+            continue
+        f = 2.0 * sh / hh
+        s[i, 0] = f * fx - s[i, 0]
+        s[i, 1] = f * fy - s[i, 1]
+
+
+@njit(cache=True)
 def overrelax_sweep(s, nbr, field):
     """Reflect every spin about its local field (energy conserving)."""
     n, _ = nbr.shape
     n_comp = s.shape[1]
+    if n_comp == 2:
+        _overrelax_xy(s, nbr)
+        return
     for i in range(n):
         _local_field(s, nbr, i, field)
         hh = 0.0
