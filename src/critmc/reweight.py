@@ -202,11 +202,18 @@ class MultiHistogram:
     # -- internal representation -------------------------------------------
     def _compress(self) -> None:
         """Group samples with identical energy (and run weight) for discrete models."""
-        key = np.stack([self.energy, self.sample_logw], axis=1)
-        uniq, inverse, cnt = np.unique(key, axis=0, return_inverse=True, return_counts=True)
-        self._u_energy = uniq[:, 0] - self._shift
-        self._u_logmult = np.log(cnt) + uniq[:, 1]
-        self._inverse = inverse.ravel()
+        # Same groups in the same order (energy, then run weight) as
+        # np.unique(..., axis=0), which sorts rows as records and is much slower.
+        order = np.lexsort((self.sample_logw, self.energy))
+        energy, logw = self.energy[order], self.sample_logw[order]
+        first = np.ones(len(order), dtype=bool)
+        first[1:] = (energy[1:] != energy[:-1]) | (logw[1:] != logw[:-1])
+        start = np.flatnonzero(first)
+        cnt = np.diff(start, append=len(order))
+        self._u_energy = energy[start] - self._shift
+        self._u_logmult = np.log(cnt) + logw[start]
+        self._inverse = np.empty(len(order), dtype=np.intp)
+        self._inverse[order] = np.cumsum(first) - 1
 
     def _log_denominator(self, f: np.ndarray) -> np.ndarray:
         """``ln D(E) = ln sum_k (N_k/g_k) exp(f_k - beta_k E)`` for each distinct energy."""
